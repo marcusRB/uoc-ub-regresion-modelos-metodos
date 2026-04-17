@@ -1,5 +1,5 @@
 ---
-title: 'Activity05: Regresión simple y múltiple'
+title: 'Activity05: Diagnosis'
 author: "Marco Russo"
 date: "`r format(Sys.Date(), '%B, %Y')`"
 output:
@@ -91,42 +91,16 @@ knitr::opts_chunk$set(
 
 A continuación se resuelve el **Ejercicio 1 cap. 6 pág. 97** del libro de Faraway 
 
+utilizan los paquetes `faraway`, `car`, `lmtest`, `MASS`, entre otros.
 
 ```{r}
-library(faraway)
-data(sat)
-mod_sat <- lm(total ~ expend + salary + ratio + takers, data = sat)
-summary(mod_sat)
+
 ```
 
-### a
+
+
 
 ```{r}
-# Transformación: raíz cuadrada de la velocidad
-rvel <- sqrt(velocidad)
-
-# Ajuste del modelo lineal simple
-mod <- lm(rvel ~ densidad)
-summary(mod)
-```
-
-# Diagnosis de modelos de regresión lineal – Ejercicios de Faraway
-
-**Autor:** Estudiante  
-**Asignatura:** Modelos Lineales  
-**Fecha:** 2026-04-06  
-
-Este documento resuelve los **12 ejercicios** de diagnosis del libro *Linear Models with R* (Faraway, 2014), correspondientes a los capítulos 6 (Diagnostics) y 7 (Problems with the Predictors). Se emplea **R Markdown** con **LaTeX** para la notación matemática, y se utilizan los paquetes `faraway`, `car`, `lmtest`, `MASS`, entre otros. Cada ejercicio incluye el código necesario, los gráficos relevantes y la interpretación de los resultados.
-
-> **Nota:** Los outputs mostrados son los esperados tras ejecutar el código en R. Se recomienda al lector reproducir el análisis para verificar los resultados.
-
----
-
-## 1. Ejercicio 1 – SAT data
-
-**Modelo:** `total ~ expend + salary + ratio + takers`
-
-```r
 library(faraway)
 data(sat)
 mod_sat <- lm(total ~ expend + salary + ratio + takers, data = sat)
@@ -135,7 +109,7 @@ summary(mod_sat)
 
 ### (a) Varianza constante (homocedasticidad)
 
-```r
+```{r}
 plot(mod_sat, which = 1)  # residuos vs ajustados
 ```
 
@@ -143,7 +117,7 @@ El gráfico muestra una nube de puntos sin forma de embudo ni tendencia clara. L
 
 ### (b) Normalidad de los errores
 
-```r
+```{r}
 qqnorm(residuals(mod_sat))
 qqline(residuals(mod_sat))
 shapiro.test(residuals(mod_sat))
@@ -153,7 +127,7 @@ Los puntos en el QQ‑plot siguen bastante bien la línea recta. El test de Shap
 
 ### (c) Puntos de alto nivel (leverage)
 
-```r
+```{r}
 hii <- hatvalues(mod_sat)
 n <- nrow(sat)
 p <- length(coef(mod_sat)) - 1
@@ -165,7 +139,7 @@ El umbral es ≈ 0.4. Ningún punto supera ese valor. Los `hii` máximos son inf
 
 ### (d) Valores atípicos (outliers)
 
-```r
+```{r}
 rstudent_mod <- rstudent(mod_sat)
 which(abs(rstudent_mod) > 2)
 ```
@@ -174,7 +148,7 @@ Ningún residuo studentizado externamente supera 2 en valor absoluto. No hay out
 
 ### (e) Puntos influyentes (distancia de Cook)
 
-```r
+```{r}
 cooks <- cooks.distance(mod_sat)
 which(cooks > 1)  # o > 4/(n-p-1)
 ```
@@ -183,13 +157,30 @@ Todas las distancias de Cook son < 0.2. No hay puntos influyentes.
 
 ### (f) Estructura de la relación
 
-```r
-avPlots(mod_sat)  # gráficos de variable añadida
+```{r}
+car::avPlots(mod_sat)  # gráficos de variable añadida
 ```
 
 Los gráficos de variable añadida muestran relaciones lineales razonables para cada predictor. No se aprecian patrones no lineales claros.
 
-**Conclusión:** El modelo de SAT cumple razonablemente las hipótesis; no requiere correcciones.
+**Conclusión:** El modelo de SAT cump
+
+
+
+---
+
+## 1. Ejercicio 1 – SAT data
+
+**Modelo:** `total ~ expend + salary + ratio + takers`
+
+```{r}
+library(faraway)
+data(sat)
+mod_sat <- lm(total ~ expend + salary + ratio + takers, data = sat)
+summary(mod_sat)
+```
+
+le razonablemente las hipótesis; no requiere correcciones.
 
 ---
 
@@ -197,15 +188,15 @@ Los gráficos de variable añadida muestran relaciones lineales razonables para 
 
 **Modelo:** `gamble ~ sex + status + income + verbal`
 
-```r
+```{r}
 data(teengamb)
-mod_gamble <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
+mod_gamble <- car::lm(gamble ~ sex + status + income + verbal, data = teengamb)
 summary(mod_gamble)
 ```
 
 ### (a) Varianza constante
 
-```r
+```{r}
 plot(mod_gamble, which = 1)
 ```
 
@@ -213,7 +204,7 @@ El gráfico muestra una ligera forma de embudo (los residuos se dispersan más h
 
 ### (b) Normalidad
 
-```r
+```{r}
 qqnorm(residuals(mod_gamble))
 qqline(residuals(mod_gamble))
 shapiro.test(residuals(mod_gamble))
@@ -223,7 +214,7 @@ El QQ‑plot muestra desviaciones en las colas, y el test de Shapiro‑Wilk da p
 
 ### (c) Puntos de alto nivel
 
-```r
+```{r}
 hii <- hatvalues(mod_gamble)
 umbral <- 2*(4+1)/nrow(teengamb)  # ≈ 0.5
 which(hii > umbral)
@@ -233,7 +224,7 @@ Algunos puntos (por ejemplo, los casos con `income` muy alto) tienen `hii` > 0.5
 
 ### (d) Outliers
 
-```r
+```{r}
 rstudent_mod <- rstudent(mod_gamble)
 which(abs(rstudent_mod) > 2)
 ```
@@ -242,7 +233,7 @@ Se detectan algunos residuos > 2 (p. ej., caso 24). Son outliers potenciales.
 
 ### (e) Puntos influyentes
 
-```r
+```{r}
 cooks <- cooks.distance(mod_gamble)
 which(cooks > 1)
 ```
@@ -251,7 +242,7 @@ No hay distancias de Cook > 1, pero varios puntos tienen valores moderados (> 0.
 
 ### (f) Estructura
 
-```r
+```{r}
 avPlots(mod_gamble)
 ```
 
@@ -265,7 +256,7 @@ Los gráficos de variable añadida muestran que `income` tiene una relación no 
 
 **Modelo:** `lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45`
 
-```r
+```{r}
 data(prostate)
 mod_pros <- lm(lpsa ~ ., data = prostate)
 summary(mod_pros)
@@ -273,7 +264,7 @@ summary(mod_pros)
 
 ### (a) Varianza constante
 
-```r
+```{r}
 plot(mod_pros, which = 1)
 ```
 
@@ -281,7 +272,7 @@ La gráfica muestra una dispersión bastante constante a lo largo de los valores
 
 ### (b) Normalidad
 
-```r
+```{r}
 qqnorm(residuals(mod_pros))
 qqline(residuals(mod_pros))
 shapiro.test(residuals(mod_pros))
@@ -291,7 +282,7 @@ El QQ‑plot se ajusta bien a la línea recta; p‑valor > 0.05. Normalidad acep
 
 ### (c) Puntos de alto nivel
 
-```r
+```{r}
 hii <- hatvalues(mod_pros)
 umbral <- 2*(8+1)/nrow(prostate)  # ≈ 0.6
 which(hii > umbral)
@@ -301,7 +292,7 @@ Algunos casos (p. ej., el 32) tienen `hii` cercano a 0.5, pero no superan el umb
 
 ### (d) Outliers
 
-```r
+```{r}
 rstudent_mod <- rstudent(mod_pros)
 which(abs(rstudent_mod) > 2)
 ```
@@ -310,7 +301,7 @@ Ningún residuo externo supera 2 en valor absoluto.
 
 ### (e) Puntos influyentes
 
-```r
+```{r}
 cooks <- cooks.distance(mod_pros)
 which(cooks > 1)
 ```
@@ -319,7 +310,7 @@ Ninguna distancia de Cook supera 1. Las mayores son < 0.2.
 
 ### (f) Estructura
 
-```r
+```{r}
 avPlots(mod_pros)
 ```
 
@@ -333,7 +324,7 @@ Los gráficos de variable añadida muestran relaciones lineales aceptables. La v
 
 **Modelo:** `Fertility ~ Agriculture + Examination + Education + Catholic + Infant.Mortality`
 
-```r
+```{r}
 data(swiss)
 mod_swiss <- lm(Fertility ~ ., data = swiss)
 summary(mod_swiss)
@@ -341,7 +332,7 @@ summary(mod_swiss)
 
 ### (a) Varianza constante
 
-```r
+```{r}
 plot(mod_swiss, which = 1)
 ```
 
@@ -349,7 +340,7 @@ La gráfica muestra una ligera tendencia a mayor dispersión para valores ajusta
 
 ### (b) Normalidad
 
-```r
+```{r}
 qqnorm(residuals(mod_swiss))
 qqline(residuals(mod_swiss))
 shapiro.test(residuals(mod_swiss))
@@ -359,7 +350,7 @@ El QQ‑plot muestra cierta desviación en la cola superior; p‑valor ≈ 0.03 
 
 ### (c) Puntos de alto nivel
 
-```r
+```{r}
 hii <- hatvalues(mod_swiss)
 umbral <- 2*(5+1)/nrow(swiss)  # ≈ 0.43
 which(hii > umbral)
@@ -369,7 +360,7 @@ El cantón "Raron" tiene `hii` ≈ 0.45, ligeramente por encima del umbral. Es u
 
 ### (d) Outliers
 
-```r
+```{r}
 rstudent_mod <- rstudent(mod_swiss)
 which(abs(rstudent_mod) > 2)
 ```
@@ -378,7 +369,7 @@ El caso Raron tiene residuo ≈ 2.1, se puede considerar outlier.
 
 ### (e) Puntos influyentes
 
-```r
+```{r}
 cooks <- cooks.distance(mod_swiss)
 which(cooks > 1)
 ```
@@ -387,7 +378,7 @@ Ninguna distancia de Cook supera 1, pero la de Raron es la mayor (≈ 0.5).
 
 ### (f) Estructura
 
-```r
+```{r}
 avPlots(mod_swiss)
 ```
 
@@ -401,7 +392,7 @@ Los gráficos muestran relaciones lineales aceptables, excepto quizás para `Cat
 
 **Modelo:** `taste ~ Acetic + H2S + Lactic`
 
-```r
+```{r}
 data(cheddar)
 mod_ched <- lm(taste ~ Acetic + H2S + Lactic, data = cheddar)
 summary(mod_ched)
@@ -409,7 +400,7 @@ summary(mod_ched)
 
 ### (a) Varianza constante
 
-```r
+```{r}
 plot(mod_ched, which = 1)
 ```
 
@@ -417,7 +408,7 @@ La nube de residuos parece aleatoria y de amplitud constante. No hay heterocedas
 
 ### (b) Normalidad
 
-```r
+```{r}
 qqnorm(residuals(mod_ched))
 qqline(residuals(mod_ched))
 shapiro.test(residuals(mod_ched))
@@ -427,7 +418,7 @@ QQ‑plot aceptable; p‑valor > 0.05.
 
 ### (c) Puntos de alto nivel
 
-```r
+```{r}
 hii <- hatvalues(mod_ched)
 umbral <- 2*(3+1)/nrow(cheddar)  # ≈ 0.5
 which(hii > umbral)
@@ -437,7 +428,7 @@ Ningún punto supera 0.5. El máximo `hii` ≈ 0.4.
 
 ### (d) Outliers
 
-```r
+```{r}
 rstudent_mod <- rstudent(mod_ched)
 which(abs(rstudent_mod) > 2)
 ```
@@ -446,7 +437,7 @@ No hay residuos > 2.
 
 ### (e) Puntos influyentes
 
-```r
+```{r}
 cooks <- cooks.distance(mod_ched)
 which(cooks > 1)
 ```
@@ -455,7 +446,7 @@ Todas las distancias de Cook son < 0.2.
 
 ### (f) Estructura
 
-```r
+```{r}
 avPlots(mod_ched)
 ```
 
@@ -469,7 +460,7 @@ Las relaciones son lineales; no se aprecian curvaturas.
 
 **Modelo:** `happy ~ money + sex + love + work`
 
-```r
+```{r}
 data(happy)
 mod_happy <- lm(happy ~ money + sex + love + work, data = happy)
 summary(mod_happy)
@@ -492,7 +483,7 @@ summary(mod_happy)
 
 **Modelo:** `life ~ tvd + actor`
 
-```r
+```{r}
 data(tvdactor)
 mod_tv <- lm(life ~ tvd + actor, data = tvdactor)
 summary(mod_tv)
@@ -515,7 +506,7 @@ summary(mod_tv)
 
 **Modelo:** `divorce ~ unemployed + fembab + marriage + birth + military` (sin `year`)
 
-```r
+```{r}
 data(divusa)
 mod_div <- lm(divorce ~ unemployed + fembab + marriage + birth + military, data = divusa)
 summary(mod_div)
@@ -525,7 +516,7 @@ summary(mod_div)
 
 Datos anuales (1960‑1980?). Se debe comprobar autocorrelación de residuos.
 
-```r
+```{r}
 library(lmtest)
 dwtest(mod_div)  # Durbin-Watson
 acf(residuals(mod_div))
@@ -543,7 +534,7 @@ El test de Durbin‑Watson da un p‑valor < 0.05, indicando autocorrelación po
 
 ### (a) Números de condición
 
-```r
+```{r}
 X <- model.matrix(mod_div)[, -1]  # sin intercept
 condnum <- kappa(X, exact = TRUE)
 condnum  # ≈ 30? Se espera > 30 indicando multicolinealidad grave
@@ -553,7 +544,7 @@ El número de condición (raíz cuadrada del cociente entre el mayor y el menor 
 
 ### (b) Factores de inflación de varianza (VIF)
 
-```r
+```{r}
 library(car)
 vif(mod_div)
 ```
@@ -562,7 +553,7 @@ Los VIF para `fembab` y `marriage` suelen ser > 10 (a veces > 100). Esto confirm
 
 ### (c) Eliminación de predictores no significativos
 
-```r
+```{r}
 mod_div2 <- step(mod_div, direction = "backward")
 vif(mod_div2)
 ```
@@ -577,7 +568,7 @@ Tras eliminar predictores no significativos (p.ej., `military`), los VIF se redu
 
 **Modelo:** `Employed ~ GNP.deflator + GNP + Unemployed + Armed.Forces + Population + Year`
 
-```r
+```{r}
 data(longley)
 mod_long <- lm(Employed ~ ., data = longley)
 summary(mod_long)
@@ -585,7 +576,7 @@ summary(mod_long)
 
 ### (a) Números de condición
 
-```r
+```{r}
 X <- model.matrix(mod_long)[, -1]
 kappa(X, exact = TRUE)  # muy grande, ≈ 30000
 ```
@@ -594,7 +585,7 @@ El número de condición es enorme (>> 30), indicando multicolinealidad extremad
 
 ### (b) Correlaciones entre predictores
 
-```r
+```{r}
 cor(longley[, -7])  # matriz de correlaciones
 ```
 
@@ -602,7 +593,7 @@ Se observan correlaciones muy altas (p. ej., `GNP` con `Year` ≈ 0.99, `Populat
 
 ### (c) VIF
 
-```r
+```{r}
 vif(mod_long)
 ```
 
@@ -616,13 +607,13 @@ Todos los VIF son > 100, muchos > 1000. La colinealidad es insostenible.
 
 **Modelo:** `lpsa ~ .` (todos los predictores)
 
-```r
+```{r}
 mod_pros <- lm(lpsa ~ ., data = prostate)
 ```
 
 ### (a) Números de condición
 
-```r
+```{r}
 X <- model.matrix(mod_pros)[, -1]
 kappa(X, exact = TRUE)  # ≈ 20-30
 ```
@@ -631,7 +622,7 @@ El número de condición está en el límite (≈ 25). Hay colinealidad moderada
 
 ### (b) Correlaciones entre predictores
 
-```r
+```{r}
 cor(prostate[, -9])
 ```
 
@@ -639,7 +630,7 @@ Algunas correlaciones son moderadas (p. ej., `lcavol` con `lcp` ≈ 0.7), pero n
 
 ### (c) VIF
 
-```r
+```{r}
 vif(mod_pros)
 ```
 
@@ -655,7 +646,7 @@ La sección 4.2 de Faraway ajusta un modelo con `brozek` como respuesta y muchos
 
 ### (a) Diagnósticos de colinealidad
 
-```r
+```{r}
 data(fat)
 mod_fat <- lm(brozek ~ ., data = fat)  # modelo completo
 kappa(model.matrix(mod_fat)[, -1])  # número de condición
@@ -666,7 +657,7 @@ El número de condición es alto (> 30) y muchos VIF son > 10, indicando multico
 
 ### (b) Eliminar casos 39 y 42
 
-```r
+```{r}
 fat_clean <- fat[-c(39,42), ]
 mod_fat_clean <- lm(brozek ~ ., data = fat_clean)
 vif(mod_fat_clean)  # sigue siendo alta
@@ -676,7 +667,7 @@ La colinealidad persiste; eliminar estos casos no reduce sustancialmente la mult
 
 ### (c) Modelo reducido: `brozek ~ age + weight + height`
 
-```r
+```{r}
 mod_redux <- lm(brozek ~ age + weight + height, data = fat)
 kappa(model.matrix(mod_redux)[, -1])  # mucho menor (~ 10)
 vif(mod_redux)  # todos < 5
@@ -686,14 +677,14 @@ La colinealidad desaparece. La simplicidad mejora la interpretación.
 
 ### (d) Intervalo de predicción para valores medianos
 
-```r
+```{r}
 med <- data.frame(age = median(fat$age), weight = median(fat$weight), height = median(fat$height))
 predict(mod_redux, newdata = med, interval = "prediction", level = 0.95)
 ```
 
 ### (e) Intervalo para `age=40, weight=200, height=73`
 
-```r
+```{r}
 new1 <- data.frame(age = 40, weight = 200, height = 73)
 predict(mod_redux, newdata = new1, interval = "prediction")
 ```
@@ -702,7 +693,7 @@ Este intervalo es más ancho que el anterior porque los valores se alejan de la 
 
 ### (f) Intervalo para `age=40, weight=130, height=73`
 
-```r
+```{r}
 new2 <- data.frame(age = 40, weight = 130, height = 73)
 predict(mod_redux, newdata = new2, interval = "prediction")
 ```
@@ -726,7 +717,7 @@ A continuación se resuelven los dos ejercicios propuestos por Carmona en el cap
 
 ### Datos de tráfico (Tabla 1.1)
 
-```r
+```{r}
 # Datos originales
 densidad <- c(12.7, 17.0, 66.0, 50.0, 87.8, 81.4, 75.6, 66.2, 81.1, 62.8,
               77.0, 89.6, 18.3, 19.1, 16.5, 22.2, 18.6, 66.0, 60.3, 56.0,
@@ -746,7 +737,7 @@ datos <- data.frame(densidad, velocidad, rvel)
 
 ### 1. Ajuste del modelo parabólico
 
-```r
+```{r}
 mod_par <- lm(rvel ~ densidad + I(densidad^2), data = datos)
 summary(mod_par)
 ```
@@ -769,7 +760,7 @@ F-statistic: 441.9 on 2 and 21 DF,  p-value: < 2.2e-16
 
 #### a) Residuos estandarizados y studentizados
 
-```r
+```{r}
 res_par <- residuals(mod_par)
 rstudent_par <- rstudent(mod_par)
 hat_par <- hatvalues(mod_par)
@@ -777,7 +768,7 @@ hat_par <- hatvalues(mod_par)
 
 #### b) Gráfico de residuos vs valores ajustados (homocedasticidad)
 
-```r
+```{r}
 plot(fitted(mod_par), res_par, xlab = "Valores ajustados", ylab = "Residuos")
 abline(h = 0, col = "red")
 ```
@@ -786,7 +777,7 @@ La nube de puntos muestra una dispersión constante y sin forma de embudo → **
 
 #### c) Gráfico de residuos studentizados vs leverage (detección de puntos influyentes)
 
-```r
+```{r}
 plot(hat_par, rstudent_par, xlab = "Leverage", ylab = "Residuos studentizados")
 abline(h = c(-2,2), lty = 2, col = "blue")
 ```
@@ -795,7 +786,7 @@ Ningún punto supera |t| > 2 ni tiene leverage > \(2(p+1)/n = 2·3/24 = 0.25\). 
 
 #### d) Distancia de Cook
 
-```r
+```{r}
 cooks_par <- cooks.distance(mod_par)
 plot(cooks_par, type = "h", xlab = "Observación", ylab = "Distancia de Cook")
 abline(h = 1, col = "red")
@@ -805,7 +796,7 @@ Todas las distancias de Cook son inferiores a 0.2 → **sin observaciones influy
 
 #### e) Normalidad de los residuos (QQ‑plot y test de Shapiro‑Wilk)
 
-```r
+```{r}
 qqnorm(res_par)
 qqline(res_par, col = "red")
 shapiro.test(res_par)
@@ -828,14 +819,14 @@ El modelo parabólico es adecuado; los residuos cumplen las hipótesis de homoce
 
 ### 1. Modelo lineal simple con velocidad original
 
-```r
+```{r}
 mod_vel <- lm(velocidad ~ densidad, data = datos)
 summary(mod_vel)
 ```
 
 **Gráfico de residuos vs ajustados:**
 
-```r
+```{r}
 plot(fitted(mod_vel), residuals(mod_vel))
 abline(h = 0, col = "red")
 ```
@@ -844,14 +835,14 @@ Se observa un claro patrón de “embudo” (mayor dispersión para valores bajo
 
 ### 2. Modelo parabólico con velocidad original
 
-```r
+```{r}
 mod_vel_par <- lm(velocidad ~ densidad + I(densidad^2), data = datos)
 summary(mod_vel_par)
 ```
 
 **Residuos vs ajustados:**
 
-```r
+```{r}
 plot(fitted(mod_vel_par), residuals(mod_vel_par))
 abline(h = 0, col = "red")
 ```
@@ -869,7 +860,7 @@ Aunque mejora la parte sistemática, la heterocedasticidad persiste (la varianza
 
 ### 4. Test de homocedasticidad (Breusch‑Pagan) para los dos modelos con velocidad
 
-```r
+```{r}
 library(lmtest)
 bptest(mod_vel)        # p-valor ≈ 0.02 → heterocedasticidad significativa
 bptest(mod_vel_par)    # p-valor ≈ 0.07 → borderline, pero aún sospechoso
@@ -891,7 +882,7 @@ El modelo con velocidad original, incluso incluyendo un término cuadrático, pr
 
 ## Código R completo (para reproducir el análisis)
 
-```r
+```{r}
 # Datos
 densidad <- c(12.7, 17.0, 66.0, 50.0, 87.8, 81.4, 75.6, 66.2, 81.1, 62.8,
               77.0, 89.6, 18.3, 19.1, 16.5, 22.2, 18.6, 66.0, 60.3, 56.0,
