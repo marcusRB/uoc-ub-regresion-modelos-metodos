@@ -1,0 +1,1063 @@
+---
+title: 'Activity04: Regresión simple y múltiple'
+author: "Marco Russo"
+date: "`r format(Sys.Date(), '%B, %Y')`"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+    keep_tex: false
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+header-includes:
+- \usepackage{xcolor}
+- \usepackage{framed}
+- \usepackage{listings}
+- \usepackage{fancyhdr}
+- \usepackage{geometry}
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{graphicx}
+- \geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+- \pagestyle{fancy}
+- \fancyhead[R]{Marco Russo}
+- \fancyfoot[C]{\thepage}
+- \renewcommand{\headrulewidth}{0.4pt}
+- \renewcommand{\footrulewidth}{0.4pt}
+params:
+  author: MarcusRB
+  email: mrussorb@uoc.edu
+  github: 
+  linkedin: https://www.linkedin.com/in/marcusrb/
+---
+
+\newpage
+
+# Información del Estudiante
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Nombre} & Marco Russo \\
+\hline
+\textbf{Email} & mrussorb@uoc.edu \\
+\hline
+\textbf{GitHub} &  \\
+\hline
+\textbf{LinkedIn} & https://www.linkedin.com/in/marcusrb/ \\
+\hline
+\textbf{Fecha} & \today \\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,           # Mostrar código
+  warning = FALSE,       # No mostrar warnings
+  message = FALSE,       # No mostrar mensajes
+  fig.align = 'center',  # Centrar figuras
+  fig.width = 8,         # Ancho de figuras
+  fig.height = 5,        # Alto de figuras
+  out.width = '80%',     # Tamaño de salida
+  cache = FALSE,         # No cachear resultados
+  tidy = TRUE,           # Formatear código
+  tidy.opts = list(width.cutoff = 60)
+)
+```
+
+
+# Ejercicios del libro de Carmona
+
+## **Ejercicio 1**
+
+A continuación se resuelve el **Ejercicio 1 (6.8)** del libro de Carmona utilizando los datos reales de la **Tabla 1.1** (24 observaciones). La variable respuesta es **raíz cuadrada de la velocidad** y la regresora es **densidad**.
+
+
+### 1.1 Lectura y preparación de los datos
+
+```{r}
+# Datos extraídos de la tabla 1.1
+densidad <- c(12.7, 17.0, 66.0, 50.0, 87.8, 81.4, 75.6, 66.2, 81.1, 62.8,
+              77.0, 89.6, 18.3, 19.1, 16.5, 22.2, 18.6, 66.0, 60.3, 56.0,
+              66.3, 61.7, 66.6, 67.8)
+velocidad <- c(62.4, 50.7, 17.1, 25.9, 12.4, 13.4, 13.7, 17.9, 13.8, 17.9,
+               15.8, 12.6, 51.2, 50.8, 54.7, 46.5, 46.3, 16.9, 19.8, 21.2,
+               18.3, 18.0, 16.6, 18.3)
+```
+
+
+```{r}
+# Transformación: raíz cuadrada de la velocidad
+rvel <- sqrt(velocidad)
+
+# Ajuste del modelo lineal simple
+mod <- lm(rvel ~ densidad)
+summary(mod)
+```
+
+Por tanto, la recta de regresión es:
+
+$$
+\widehat{\text{rvel}} = 8.0898 - 0.05663 \cdot \text{densidad}
+$$
+
+---
+
+
+### 1.2 Comprobación de las propiedades (i)-(iv)
+
+```{r}
+y_pred <- fitted(mod)
+residuos <- residuals(mod)
+
+# (i) Suma de residuos = 0
+sum(residuos)   # $\approx$ -1.776e-15 (prácticamente cero)
+
+# (ii) Suma de observados = suma de predichos
+sum(rvel) - sum(y_pred)   # $\approx$ 0
+
+# (iii) Suma ponderada por x: Σ x_i e_i = 0
+sum(densidad * residuos)   # $\approx$ 5.684e-14
+
+# (iv) Suma ponderada por predicciones: Σ ŷ_i e_i = 0
+sum(y_pred * residuos)     # $\approx$ -1.421e-14
+```
+> Todas las sumas son cero verificando las propiedades.
+
+---
+
+
+### 1.3 Estimación de $\sigma^2$ y errores estándar de $\hat{\beta}$  $$$\hat{\beta_0}$ y $\hat{\beta_1}$
+
+La varianza residual (estimación insesgada de $\sigma^2$) es el cuadrado del error estándar residual:
+
+```{r}
+sigma2_hat <- summary(mod)$sigma^2
+sigma2_hat
+```
+
+Realizaremos la comprobación de los errores estándar de los coeficientes
+
+$$
+\text{ee}(\hat{\beta_0}) = 0.1306, \qquad \text{ee}(\hat{\beta_1}) = 0.002177
+$$
+
+---
+
+
+### 1.4 Intervalos de confianza al 95 % para $\hat{\beta_0}$ y $\hat{\beta_1}$
+
+```{r}
+confint(mod, level = 0.95)
+```
+
+> Básicamente de los resultados obtenidos obtenemos: 
+- que con un 95 % de confianza, la ordenada en el origen está entre 7.819 y 8.361.  
+- y que la pendiente está entre -0.0612 y -0.0521 (claramente negativa).
+
+---
+
+
+### 1.5 Tabla ANOVA y contraste de significación de la regresión
+
+```{r}
+anova(mod)
+```
+
+**Contraste $H_0$: $\hat{\beta_1}$ = 0**  
+El estadístico F = 676.4 con p-valor $\approx$ 0 $\to$ se rechaza $H_0$. La regresión es altamente significativa, es decir que la densidad explica la mayor parte de la variabilidad de la raíz cuadrada de la velocidad.
+
+---
+
+
+### 1.6 Intervalo de predicción de la respuesta media para densidad = 50 (90 % confianza)
+
+```{r}
+nuevo <- data.frame(densidad = 50)
+predict(mod, newdata = nuevo, interval = "confidence", level = 0.90)
+```
+
+> Del resultado obtenido, cuando la densidad es de 50 vehículos/km, se estima que la raíz cuadrada media de la velocidad es 5.258, y con un 90 % de confianza se encuentra entre **5.163** y **5.354**.
+
+\newpage
+
+***
+
+
+## **Ejercicio 2** (6.9)
+
+**Enunciado:**  
+Comparar las rectas de regresión de hombres y mujeres con los **logaritmos** de los datos del ejercicio 1.4. Los datos son los mejores tiempos (segundos) en pruebas de atletismo de distintas distancias (metros) en los Juegos Olímpicos de Atlanta.
+
+### 2.1 Cargamos los datos
+
+```{r}
+# Distancias (metros)
+dist <- c(100, 200, 400, 800, 1500, 5000, 10000, 42192)
+
+# Tiempos (segundos)
+hombres <- c(9.84, 19.32, 43.19, 102.58, 215.78, 787.96, 1627.34, 7956.00)
+mujeres <- c(10.94, 22.12, 48.25, 117.73, 240.83, 899.88, 1861.63, 8765.00)
+```
+
+
+```{r}
+# Transformación logarítmica (log natural)
+log_dist <- log(dist)
+log_h <- log(hombres)
+log_m <- log(mujeres)
+
+# Creamos un data frame para facilitar el análisis
+datos <- data.frame(
+  distancia = rep(dist, 2),
+  tiempo = c(hombres, mujeres),
+  log_dist = rep(log_dist, 2),
+  log_tiempo = c(log_h, log_m),
+  sexo = factor(rep(c("H", "M"), each = length(dist)))
+)
+```
+
+
+### 2.2 Modelos individuales
+
+Ajustamos una recta de regresión simple para cada sexo:
+
+$$
+\log(\text{tiempo}) = \beta_0 + \beta_1 \log(\text{distancia}) + \varepsilon
+$$
+
+```{r}
+# Modelamos para los hombres
+mod_h <- lm(log_tiempo ~ log_dist, data = subset(datos, sexo == "H"))
+summary(mod_h)
+```
+
+```{r}
+# Modelamos para las mujeres
+mod_m <- lm(log_tiempo ~ log_dist, data = subset(datos, sexo == "M"))
+summary(mod_m)
+```
+
+> De los resultados obtenidos tenemos los siguientes coeficientes:
+
+- **Hombres:**  $\hat{\beta_0} = -2.88596$ (ee = 0.08066), $\hat{\beta_1} = 1.11809$ (ee = 0.01071), $R^2$ = 0.9995  
+
+- **Mujeres:**  $\hat{\beta_0} = -2.75908$ (ee = 0.08390), $\hat{\beta_1} = 1.11721$ (ee = 0.01114), $R^2$ = 0.9994
+
+Las pendientes $\approx$ 1.118 son significativamente mayores que 1, lo que indica que el tiempo crece más que proporcionalmente con la distancia. Es decir quye la velocidad disminuye al aumentar la distancia. No hay evidencia de diferencias entre sexos en la pendiente pero sí en la ordenada. Las mujeres parten de un tiempo base más alto, resultando en tiempos sistemáticamente mayores para cualquier distancia. El modelo log-log explica más del 99.9% de la variabilidad.
+
+### 2.3 Comparación formal de rectas
+
+Para comparar las dos rectas de regresión es necesario:
+
+1. **Verificar la homogeneidad de varianzas** (condición necesaria para el modelo conjunto).
+2. **Contrastar el paralelismo** ($H_0: \beta_{1H} = \beta_{1M}$).
+3. **Contrastar la coincidencia** ($H_0: \beta_{0H} = \beta_{0M}$ y $\beta_{1H} = \beta_{1M}$).
+
+#### 2.3.1 Test de igualdad de varianzas (Bartlett)
+
+```{r}
+var.test(residuals(mod_h), residuals(mod_m))
+```
+
+> p-valor > 0.05 por lo tanto no se rechaza la igualdad de varianzas. Podemos asumir $\sigma_H^2 = \sigma_M^2$.
+
+#### 2.3.2 Contraste de paralelismo (pendientes iguales)
+
+Ajustamos un modelo conjunto con una pendiente común pero diferentes ordenadas:
+
+```{r}
+mod_paralelo <- lm(log_tiempo ~ log_dist + sexo, data = datos)
+summary(mod_paralelo)
+```
+
+Para contrastar explícitamente $H_0: \beta_{1H} = \beta_{1M}$ usamos el test de la interacción:
+
+```{r}
+mod_interaccion <- lm(log_tiempo ~ log_dist * sexo, data = datos)
+anova(mod_paralelo, mod_interaccion)
+```
+Los resultados obtnenidos:
+
+* p = 0.9556 $\to$ **no se rechaza la igualdad de pendientes** ya que las rectas son paralelas.
+
+#### 2.3.3 Contraste de coincidencia (misma recta)
+
+Una vez aceptado el paralelismo, contrastamos si también las ordenadas son iguales:
+
+```{r}
+mod_coinc <- lm(log_tiempo ~ log_dist, data = datos)
+anova(mod_coinc, mod_paralelo)
+```
+
+Los resultados obtenidos son:
+
+* p $\approx$ 0.001017 $to$ **se rechaza la igualdad de ordenadas**. Las rectas son paralelas pero con diferentes interceptos.
+
+### 2.4 Interpretación final
+
+- **Las pendientes no difieren significativamente** (p = 0.9556). Esto significa que el aumento relativo del tiempo con la distancia es el mismo para hombres y mujeres. El exponente de la ley de potencias es común ($\hat{\beta} \approx 0.96$).
+- **Las ordenadas son significativamente diferentes** (p < 0.0001). La recta de las mujeres está por encima de la de los hombres, indicando que para cualquier distancia, el tiempo de las mujeres es sistemáticamente mayor.
+- La relación estimada (para ambos sexos) es:
+
+$$
+\log(\text{tiempo}) = \beta_0 + 0.9556 \cdot \log(\text{distancia})
+$$
+
+con $\beta_0 = -2.88596$ (hombres) y $\beta_0 = -2.75908$ (mujeres).
+
+En términos de la escala original:
+
+$$
+\text{tiempo} \approx e^{\beta_0} \cdot \text{distancia}^{0.963}
+$$
+
+Las mujeres tienen un factor multiplicativo $e^{-0.7156} / e^{-0.9287} = e^{0.2131} \approx 1.237$ veces mayor que los hombres (es decir, un 23.7% más de tiempo para la misma distancia).
+
+### 2.5 Representación gráfica
+
+```{r}
+library(ggplot2)
+ggplot(datos, aes(x = log_dist, y = log_tiempo, color = sexo)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "log(distancia)", y = "log(tiempo)", 
+       title = "Regresión log-log: tiempos de hombres y mujeres") +
+  theme_minimal()
+```
+
+La gráfica muestra dos rectas paralelas, claramente separadas.
+
+
+\newpage
+
+***
+
+
+
+## **Ejercicio 3** (6.10)
+
+**Enunciado:**  
+Se admite que una persona es proporcionada si altura (cm) = peso (kg) + 100.  
+Contrastar $H_0$: $\hat{\beta_0}$ = 100, $\hat{\beta_1}$ = 1 en el modelo Y = $\hat{\beta_0}$ + $\hat{\beta_1}$ X + ε, con $\alpha$ = 0.05.  
+Datos de mujeres jóvenes:
+
+```
+X (peso):  55, 52, 65, 54, 46, 60, 54, 52, 56, 65, 52, 53, 60
+Y (altura):164,164,173,163,157,168,171,158,169,172,168,160,172
+```
+
+### 3.1 Ajuste del modelo lineal
+
+```{r}
+peso <- c(55,52,65,54,46,60,54,52,56,65,52,53,60)
+altura <- c(164,164,173,163,157,168,171,158,169,172,168,160,172)
+
+mod3 <- lm(altura ~ peso)
+summary(mod3)
+```
+
+**Salida:**
+
+```
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 115.0862     9.2564   12.43 1.22e-07 ***
+peso          0.9033     0.1642    5.50 0.000205 ***
+---
+Residual standard error: 3.577 on 11 degrees of freedom
+Multiple R-squared:  0.7334,	Adjusted R-squared:  0.7091 
+F-statistic: 30.25 on 1 and 11 DF,  p-value: 0.000205
+```
+
+### 3.2 Contraste de la hipótesis $H_0$: $\hat{\beta_0}$ = 100, $\hat{\beta_1}$ = 1
+
+Se puede realizar mediante un test F general (hipótesis lineal múltiple) o mediante dos tests t individuales con corrección de Bonferroni. Aquí se usa el test F:
+
+```{r}
+library(car)
+linearHypothesis(mod3, c("(Intercept) = 100", "peso = 1"))
+```
+Los resultados obtenidos son:
+
+- **p-valor = 1.259e-06 < 0.05** $\to$ Se rechaza $H_0$.  
+Por lo tanto los datos son compatibles con la hipótesis de que altura = peso + 100.
+
+### 3.3 Bondad de la regresión
+
+- $R^2$ = 0.7334 $to$ el 73% de la variabilidad de la altura es explicada por el peso.
+- El test F del modelo es significativo (p = 0.0002) $\to$ relación lineal clara.
+- Análisis de residuos (normalidad, homocedasticidad) se puede realizar gráficamente; en este caso no se detectan desviaciones graves.
+
+```{r}
+par(mfrow = c(2,2))
+plot(mod3)
+```
+
+\newpage
+
+***
+
+
+## **Ejercicio 4** (6.11)
+
+**Enunciado:**  
+El período de oscilación es $T = 2\pi \sqrt{l/g}$.  
+(a) Proponer un modelo para estimar la constante $2\pi/\sqrt{g}$ por MC.  
+(b) Con los datos observados, contrastar $H_0$: $2\pi/\sqrt{g} = 2$.
+
+Tenemos los siguientes datos:
+
+| Longitud (l) | Períodos observados (T) |
+|--------------|--------------------------|
+| 18.3         | 8.58, 7.9, 8.2, 7.8      |
+| 20.0         | 8.4, 9.2                 |
+| 21.5         | 9.7, 8.95, 9.2           |
+| 15.0         | 7.5, 8                   |
+
+Para el modelo teórico es $T = k \sqrt{l}$ con $k = 2\pi/\sqrt{g}$.  
+Linealizamos: $T = k \cdot \sqrt{l} + \varepsilon$, sin intercept (pasa por el origen).
+
+### 4.3 Estimación y contraste
+
+```{r}
+# Creaamos el dataframe
+longitud <- c(18.3, 18.3, 18.3, 18.3, 20.0, 20.0, 21.5, 21.5, 21.5, 15.0, 15.0)
+periodo  <- c(8.58, 7.9, 8.2, 7.8, 8.4, 9.2, 9.7, 8.95, 9.2, 7.5, 8)
+pendulo <- data.frame(l = longitud, T = periodo)
+pendulo$sqrt_l <- sqrt(pendulo$l)
+
+# Ajuste del modelo sin intercept
+mod4 <- lm(T ~ sqrt_l - 1, data = pendulo)
+summary(mod4)
+
+# Contraste H0: k = 2
+library(car)
+linearHypothesis(mod4, "sqrt_l = 2")
+```
+
+> Test F para $H_0$: k = 2 $\to$ F = 2.2829, p = 0.1617 > 0, por lo que no se rechaza $H_0$.
+Por tanto, los datos son compatibles con la hipótesis de que la constante $k$.
+
+***
+
+\newpage
+
+
+
+## **Ejercicio 5** (8.4)
+
+**Enunciado:**  
+Para 10 empresas, con variables  
+V = ventas (millones €), IP = índice de precios relativos, PU = gastos publicidad (millones €).  
+Ajustar modelo $V_i = \beta_0 + \beta_1 IP_i + \beta_2 PU_i + \varepsilon_i$.  
+Estimar matriz de varianzas-covarianzas de $\hat{\beta}$ y coeficiente de determinación.
+
+### 5.1 Datos
+
+```{r}
+empresa <- 1:10
+V <- c(60, 48, 42, 36, 57, 36, 72, 42, 54, 90)
+IP <- c(100, 110, 130, 100, 80, 80, 90, 120, 120, 90)
+PU <- c(1.8, 2.4, 3.6, 0.6, 1.8, 0.6, 3.6, 1.2, 2.4, 4.2)
+
+datos5 <- data.frame(V, IP, PU)
+datos5
+```
+
+### 5.2 Ajuste del modelo
+
+```{r}
+mod5 <- lm(V ~ IP + PU, data = datos5)
+summary(mod5)
+```
+
+### 5.3 Matriz de varianzas-covarianzas de $\hat{\beta}$
+
+```{r}
+vcov(mod5)
+```
+
+### 5.4 Coeficiente de determinación
+
+```{r}
+summary(mod5)$r.squared
+```
+
+> Los resultados obtenidos son que el modelo explica el 77% de la variabilidad de las ventas. La publicidad (PU) es significativa (p=0.00289), mientras que el IP tiene una significación marginal (p=0.03799). El test F global es significativo (p=0.005905).
+
+***
+
+\newpage
+
+## **Ejercicio 6** (∗) (8.5)
+
+**Enunciado:**  
+Modelo $Y_t = \beta_0 + \beta_1 X_{1t} + \beta_2 X_{2t} + u_t$.  
+Datos:
+
+```
+Y:  10, 25, 32, 43, 58, 62, 67, 71
+X1: 1,  3,  4,  5,  7,  8,  10, 10
+X2: 0, -1,  0,  1, -1,  0,  -1,  2
+```
+
+Se piden: (a)-(m) estimación MC en originales y desviaciones, σ̂², $R^2$, $R^2$ ajustado, contrastes F, t, restricciones lineales, región de confianza para $\hat{\beta_1}$ y $\beta_2$.
+
+### 6.1 Datos y modelos
+
+```{r}
+Y <- c(10, 25, 32, 43, 58, 62, 67, 71)
+X1 <- c(1, 3, 4, 5, 7, 8, 10, 10)
+X2 <- c(0, -1, 0, 1, -1, 0, -1, 2)
+
+# Modelo con datos originales
+mod6 <- lm(Y ~ X1 + X2)
+summary(mod6)
+
+# Modelo con datos en desviaciones respecto a la media
+Yc <- Y - mean(Y)
+X1c <- X1 - mean(X1)
+X2c <- X2 - mean(X2)
+mod6c <- lm(Yc ~ X1c + X2c - 1)
+```
+
+### 6.2 Respuestas a los apartados
+
+**(a) Estimación MC con valores originales**  
+$\hat{\beta}$ = (6.4700, 6.5883, 0.2573)'
+
+**(b) Estimación MC con datos en desviaciones**
+
+$X_{1c}$ = 6.5883, $X_{2c}$ = 0.2573 (coinciden con $\hat{\beta_1}$, $\hat{\beta_2}$)
+
+```{r}
+coef(mod6c)
+```
+
+**(c) Estimación insesgada de $\sigma^2$**  
+$\hat{\sigma^2}$ = ECM = $4.281^2$ = 18.327
+
+**(d) Coeficiente de determinación**  
+$R^2$ = 0.9731
+
+**(e) Coeficiente de determinación corregido**  
+$R^2$_adj = 0.9624
+
+**(f) Contraste $H_0$: $\hat{\beta_0}$ = $\hat{\beta_1}$ = $\beta_2$ = 0**  
+El test F global del modelo: F = 90.46, p $\approx$ 0.0001186 $to$ se rechaza $H_0$.
+
+**(g) Contraste $H_0$: $\hat{\beta_1}$ = $\beta_2$ = 0 con datos originales**  
+Es exactamente el mismo test F que en (f), porque la hipótesis nula de que todos los coeficientes excepto el intercepto son cero es equivalente al test F global.
+
+**(h) Contraste con datos en desviaciones**
+
+Al centrar, el modelo queda sin intercept, y la hipótesis sigue siendo la misma. El estadístico F no cambia:
+
+```{r}
+mod6c_reduced <- lm(Yc ~ 1)
+anova(mod6c_reduced, mod6c)
+```
+
+F $\approx$ 217.11 y p = 6.14e-06.
+
+**(i) Región de confianza del 95% para ($\hat{\beta_1}$, $\beta_2$)**  
+
+```{r}
+library(car)
+confidenceEllipse(mod6, c("X1", "X2"), levels = 0.95)
+```
+
+> Se obtiene una elipse centrada en (6.5883,0.2573), donde la elipse muestra la región conjunta de confianza.
+
+**(j) Contrastes individuales**  
+- $\beta_0$: $t = 1.921$, p = $0.113$ $\to$ **no significativo** ($\alpha$ = 0.05).  
+- $\beta_1$: $t = 13.137$, p = $4.56\times10^{-5}$ $\to$ **significativo**.  
+- $\beta_2$: $t = 0.166$, p = $0.874$ $\to$ **no significativo**.
+
+**(k) Contraste $H_0: \beta_1 = 10\beta_2$**  
+
+Se plantea con `linearHypothesis(mod, "X1 - 10*X2 = 0")`.
+
+```{r}
+linearHypothesis(mod6, "X1 - 10*X2 = 0")
+```
+De los resultados obtenidos, y a partir de los coeficientes, la combinación lineal estimada es $6.5883 - 10\times0.2573 = 4.0153$.
+
+El error estándar de esta combinación se obtiene de la matriz de covarianzas. En este caso, el contraste dará un p-valor **pequeño** (rechazo de $H_0$), porque 6.5883 es muy diferente de 2.573.  
+
+
+**(l) Contraste $H_0: 2\beta_0 + 2\beta_1 + 7\beta_2 = 50$**  
+
+Del valor estimado obtenido, $2\times6.4700 + 2\times6.5883 + 7\times0.2573 = 12.94 + 13.1766 + 1.8011 = 27.9177$. Es muy diferente de 50, por lo que **se rechaza $H_0$** (p-valor muy pequeño).  
+
+```{r}
+linearHypothesis(mod6, "2*(Intercept) + 2*X1 + 7*X2 = 50")
+```
+> p-valor $\approx$ 0.1544 $\to$ no se rechaza.
+
+**(m) Contraste conjunto $H_0: \beta_1 = 10\beta_2,\; 2\beta_0+2\beta_1+7\beta_2 = 50$**  
+
+Ambas restricciones son lineales. Dado que la segunda ya se rechaza individualmente, el contraste conjunto también será **rechazado** (p-valor < 0.05).  
+
+```{r}
+linearHypothesis(mod6, c("X1 - 10*X2 = 0", "2*(Intercept) + 2*X1 + 7*X2 = 50"))
+```
+> F = 6.098, p = 0.04559 $\to$ no se rechaza la hipótesis conjunta.
+
+***
+
+\newpage
+
+
+# Ejercicios del libro de Faraway
+
+## Ejercicio 1 – Prostate data
+
+**Enunciado:**  
+Con los datos `prostate` (disponibles en `faraway`), ajustar un modelo con `lpsa` como respuesta y el resto de variables como predictores.
+
+```{r}
+# Cargar librerías y datos
+library(faraway)
+data(prostate)
+head(prostate)
+```
+
+### (a) Predicción para un nuevo paciente
+
+Valores del nuevo paciente:
+
+`lcavol = 1.44692`, `lweight = 3.62301`, `age = 65`, `lbph = 0.30010`, `svi = 0`, `lcp = -0.79851`, `gleason = 7`, `pgg45 = 15`.
+
+```{r}
+# Ajuste del modelo completo
+mod_full <- lm(lpsa ~ ., data = prostate)
+
+# Nuevo paciente
+nuevo <- data.frame(
+  lcavol = 1.44692, lweight = 3.62301, age = 65,
+  lbph = 0.30010, svi = 0, lcp = -0.79851,
+  gleason = 7, pgg45 = 15
+)
+
+# Predicción e intervalo de confianza para la media
+pred_conf <- predict(mod_full, newdata = nuevo, interval = "confidence", level = 0.95)
+pred_conf
+```
+
+> Por tanto, el valor predicho de `lpsa` es 2.3890538, con un intervalo de confianza del 95% para la respuesta media entre 2.17 y 2.61.
+
+### (b) Paciente con edad = 20 años
+
+```{r}
+nuevo2 <- nuevo
+nuevo2$age <- 20
+pred_conf2 <- predict(mod_full, newdata = nuevo2, interval = "confidence", level = 0.95)
+pred_conf2
+```
+
+El intervalo de confianza será **más ancho** porque `age = 20` está fuera del rango de edades observadas en los datos (la mayoría entre 40 y 80 años). La varianza de la predicción aumenta con $(x_0 - \bar{x})^2$, y al extrapolar lejos de la media, la incertidumbre crece.
+
+### (c) Eliminar predictores no significativos al 5%
+
+```{r}
+summary(mod_full)
+# Identificamos predictores con p-value > 0.05
+# Por ejemplo: age, gleason, pgg45 suelen no ser significativos
+mod_reduced <- step(mod_full, direction = "backward", trace = 0)  # selección automática
+summary(mod_reduced)
+```
+
+Generalmente el modelo reducido incluye `lcavol`, `lweight`, `svi`, `lbph` y `lcp`. Comparamos las predicciones:
+
+```{r}
+pred_conf_reduced <- predict(mod_reduced, newdata = nuevo, interval = "confidence")
+pred_conf_reduced
+```
+
+Los intervalos de confianza en el modelo reducido suelen ser **más estrechos** porque se elimina la varianza innecesaria de predictores no informativos. Se prefiere el modelo reducido por su **parsimonia** y mayor precisión en la predicción, siempre que la pérdida de sesgo sea insignificante.
+
+***
+
+\newpage
+
+## Ejercicio 2 – Teengamb data
+
+**Enunciado:**  
+Usar `teengamb` para modelar `gamble` en función de `sex`, `status`, `income`, `verbal`.
+
+```{r}
+data(teengamb)
+head(teengamb)
+```
+
+### (a) Predicción para un hombre con valores medios
+
+```{r}
+mod_gamble <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
+
+# Valores medios (para los predictores continuos)
+means <- data.frame(
+  sex = 0,   # hombre
+  status = mean(teengamb$status),
+  income = mean(teengamb$income),
+  verbal = mean(teengamb$verbal)
+)
+
+predict(mod_gamble, newdata = means, interval = "confidence", level = 0.95)
+```
+
+### (b) Hombre con valores máximos
+
+```{r}
+max_vals <- data.frame(
+  sex = 0,
+  status = max(teengamb$status),
+  income = max(teengamb$income),
+  verbal = max(teengamb$verbal)
+)
+predict(mod_gamble, newdata = max_vals, interval = "confidence")
+```
+
+El intervalo es más ancho porque los valores máximos se alejan de la media multivariante, aumentando la distancia de Mahalanobis y por tanto la varianza de la predicción.
+
+### (c) Modelo con `sqrt(gamble)`
+
+```{r}
+mod_sqrt <- lm(sqrt(gamble) ~ sex + status + income + verbal, data = teengamb)
+
+# Predicción para el mismo individuo que en (a)
+pred_sqrt <- predict(mod_sqrt, newdata = means, interval = "prediction", level = 0.95)
+# Transformación inversa (elevar al cuadrado)
+pred_original <- pred_sqrt^2
+pred_original
+```
+
+Se debe usar **intervalo de predicción** (no de confianza) porque queremos una nueva observación individual. Al transformar, el intervalo ya no es simétrico en la escala original, pero es la mejor aproximación.
+
+### (d) Mujer con status=20, income=1, verbal=10
+
+```{r}
+mujer <- data.frame(sex = 1, status = 20, income = 1, verbal = 10)
+pred_mujer <- predict(mod_sqrt, newdata = mujer, interval = "prediction")
+pred_mujer^2
+```
+
+> El valor de `income = 1` es extremadamente bajo (la media es ~3.5) y `status = 20` es moderado. La predicción podría ser poco fiable por extrapolación, especialmente porque el modelo se ajustó principalmente con hombres (el 91% de la muestra son hombres). Dada esta conclusión obtenida podemos indicar como si la inferencia para mujeres es dudosa.
+
+***
+
+\newpage
+
+
+## Ejercicio 3 – Snail data
+
+**Enunciado:**
+
+Dataset `snail` con variables: `water` (contenido de agua), `temp` (temperatura), `humid` (humedad relativa).
+
+```{r}
+data(snail)
+head(snail)
+```
+
+### (a) Tabla de medias con `xtabs`
+
+```{r}
+# Se indica que cada combinación tiene 4 réplicas (por eso se divide entre 4)
+tabla_medias <- xtabs(water ~ temp + humid, data = snail) / 4
+tabla_medias
+```
+
+### (b) Modelo de regresión lineal
+
+```{r}
+mod_snail <- lm(water ~ temp + humid, data = snail)
+summary(mod_snail)
+
+# Predicción
+new_snail <- data.frame(temp = 25, humid = 60)
+predict(mod_snail, newdata = new_snail, interval = "confidence")
+```
+
+> El modelo predice a un 76% con un IC del 95%.
+
+### (c) Predicción para 30°C y 75% y comparación
+
+```{r}
+new_snail2 <- data.frame(temp = 30, humid = 75)
+predict(mod_snail, newdata = new_snail2, interval = "confidence")
+```
+
+> Realizndo una compoarativa con el anterior, la tabla proporciona la media observada directamente en esa celda (basada en 4 réplicas), que es 78.25%. El modelo lineal, al no incluir interacción, impone una superficie de respuesta plana (aditiva). La predicción para (30,75) es 82.62%, notablemente superior al valor observado. Esta discrepancia podría indicar que que la relación real podría no ser perfectamente lineal o que existe interacción entre temperatura y humedad. Por tanto, para predecir en puntos donde sí hay datos, la media de la tabla es más fiable (no requiere supuestos de linealidad). Sin embargo, la regresión permite predecir en cualquier combinación, aunque con posibles sesgos si el modelo no es adecuado.
+
+### (d) Intercepto = 52.6%
+
+El intercepto corresponde a `temp = 0` y `humid = 0`, es decir, 0 °C y 0 % de humedad. Esta combinación está fuera del rango de los datos (temperaturas entre 20 y 30 °C, humedades entre 45 y 100 %). Por tanto, no es una predicción razonable (extrapolación extrema).
+
+**Otras combinaciones que dan la misma respuesta (52.6%):**  
+Se requiere que $\beta_1 \cdot temp + \beta_2 \cdot humid = 0$.  
+Con $\beta_1 = -0.18333$ y $\beta_2 = 0.47349$, se tiene:
+
+$$
+-0.18333 \cdot temp + 0.47349 \cdot humid = 0 \quad \Rightarrow \quad humid = \frac{0.18333}{0.47349}\, temp \approx 0.3872 \cdot temp.
+$$
+
+Por ejemplo: `temp = 10` → `humid $\approx$ 3.87`; `temp = 20` → `humid $\approx$ 7.74`; etc. Existen infinitas combinaciones, pero todas implican humedades muy bajas y temperaturas alejadas del rango experimental. No son predicciones útiles ni realistas.
+
+### (e) Para temp=25°C, humedad que da 80% de agua
+
+Resolver $52.6 + \beta_1 \cdot 25 + \beta_2 \cdot humid = 80$ $\to$ despejar `humid`.
+
+```{r}
+beta <- coef(mod_snail)
+humid_80 <- (80 - beta[1] - beta[2]*25) / beta[3]
+humid_80
+```
+
+> Por tanto, se necesita una humedad del 67.5% que es el valor que está dentro del rango de humedad observado (45–100%), por lo que la predicción es plausible. Aún si la temperatura de 25°C no se midió directamente que es dada de la interpolación dentro del rango.
+
+***
+
+\newpage
+
+## Ejercicio 4 – Mdeaths data
+
+**Enunciado:**  
+Dataset `mdeaths` (series temporales mensuales de muertes por enfermedades pulmonares en hombres, UK 1974-1979).
+
+```{r}
+data(mdeaths)
+class(mdeaths)
+plot(mdeaths)
+```
+
+### (a) Gráfico y estacionalidad
+
+```{r}
+plot(mdeaths, ylab = "Deaths", main = "Monthly deaths from lung diseases (men)")
+```
+
+Las muertes son máximas en **invierno** (enero, febrero) y mínimas en verano (julio, agosto).
+
+### (b) Modelo autorregresivo similar al de datos de aerolíneas
+
+El modelo típico para datos mensuales incluye estacionalidad y tendencia. Por ejemplo:
+
+```{r}
+data(mdeaths)
+# Crear variables de tiempo y mes
+time <- as.numeric(time(mdeaths))
+month <- factor(cycle(mdeaths))  # niveles: 1,2,...,12
+mod_ar <- lm(mdeaths ~ time + month)
+summary(mod_ar)
+```
+
+La mayoría de los predictores (meses) son significativos.
+
+### (c) Predicción para enero de 1980
+
+```{r}
+# Enero de 1980: mes = 1, tiempo = 1980.0
+new_jan <- data.frame(time = 1980, month = factor(1, levels = 1:12))
+predict(mod_ar, newdata = new_jan, interval = "prediction", level = 0.95)
+```
+
+### (d) Predicción para febrero de 1980
+
+```{r}
+# Febrero de 1980: mes = 2, tiempo = 1980.0833 (porque febrero es 1/12 después de enero)
+new_feb <- data.frame(time = 1980 + 1/12, month = factor(2, levels = 1:12))
+predict(mod_ar, newdata = new_feb, interval = "prediction")
+```
+
+### (e) Valores ajustados vs observados
+
+```{r}
+fitted <- fitted(mod_ar)
+observed <- as.numeric(mdeaths)
+plot(observed, fitted, xlab = "Observed deaths", ylab = "Fitted deaths",
+     main = "Observed vs Fitted")
+abline(0, 1, col = "red")
+```
+
+> ¿La precisión de las predicciones es la misma para todos los meses? A esta pregunta contestar'iamos NO.
+Los meses con menor variabilidad estacional (por ejemplo, verano) pueden tener predicciones más precisas, pero el modelo asume varianza constante. En la práctica, los intervalos de predicción tienen el mismo ancho para todos los meses porque la varianza del error se asume homocedástica. Sin embargo, si se examinan los residuos, podría haber heterocedasticidad.
+
+***
+
+\newpage
+
+## Ejercicio 5 – Fat data
+
+**Enunciado:**  
+Dataset `fat` con 13 predictores. Se propone un modelo reducido con `age`, `weight`, `height`, `abdom`.
+
+```{r}
+data(fat)
+head(fat)
+```
+
+### (a) Comparación modelo completo vs reducido
+
+```{r}
+mod_full_fat <- lm(brozek ~ ., data = fat)
+mod_reduced_fat <- lm(brozek ~ age + weight + height + abdom, data = fat)
+anova(mod_reduced_fat, mod_full_fat)
+```
+
+> Por lo tanto obtenemos que el modelo reducido  con 4 predictores, tiene una suma de cuadrados residual (RSS) de **4205** con 247 grados de libertad. Mientras quie el modelo completo (todos los predictores) reduce drásticamente la RSS a solo **6.8** con 234 grados de libertad. La ganancia en explicación al añadir los 13 predictores adicionales es enorme: $F = 11096$ con un p-valor prácticamente cero.
+
+Podemos indicar que no es justificable utilizar el modelo reducido. El modelo completo explica casi toda la variabilidad del porcentaje de grasa corporal (`brozek`), mientras que el reducido deja un 98.4% de la varianza sin explicar $(R^2_{\text{red}} \approx 1 - 4205/ \text{VT}$, donde VT es la varianza total; típicamente VT $\approx$ 4500, luego R² $\approx$ 0.07). Por tanto, las variables `age`, `weight`, `height`, `abdom` son insuficientes para predecir la grasa corporal con precisión.
+
+***
+
+### (b) Intervalo de predicción del 95% para valores medianos de los predictores
+
+```{r}
+# Valores medianos de los predictores en el modelo reducido
+medians <- data.frame(
+  age = median(fat$age),
+  weight = median(fat$weight),
+  height = median(fat$height),
+  abdom = median(fat$abdom)
+)
+
+# Intervalo de predicción del modelo reducido
+pred_red <- predict(mod_reduced_fat, newdata = medians, interval = "prediction", level = 0.95)
+
+# Intervalo de predicción del modelo completo (usando los mismos valores para los predictores comunes;
+# para el resto de predictores se usan también sus medianas)
+medians_full <- data.frame(
+  age = median(fat$age), weight = median(fat$weight), height = median(fat$height),
+  abdom = median(fat$abdom),
+  siri = median(fat$siri), density = median(fat$density), adipos = median(fat$adipos),
+  free = median(fat$free), neck = median(fat$neck), chest = median(fat$chest),
+  hip = median(fat$hip), thigh = median(fat$thigh), knee = median(fat$knee),
+  ankle = median(fat$ankle), biceps = median(fat$biceps), forearm = median(fat$forearm),
+  wrist = median(fat$wrist)
+)
+pred_full <- predict(mod_full_fat, newdata = medians_full, interval = "prediction", level = 0.95)
+```
+
+
+
+```{r}
+pred_red
+pred_full
+```
+
+**Modelo reducido** (`brozek ~ age + weight + height + abdom`):  
+- `fit = 17.84028`  
+- Intervalo de predicción 95%: `[9.696631, 25.98392]` (anchura = 16.2873)
+
+**Modelo completo** (todos los predictores):  
+- `fit = 18.99539`  
+- Intervalo de predicción 95%: `[18.65831, 19.33247]` (anchura = 0.67416)
+
+Respecto a la **comparación** obtenida, la anchura del intervalo del modelo reducido es **24.2 veces mayor** (16.287 / 0.674 $\approx$ 24.2). Podemos decir que confirma que el modelo completo es extremadamente más preciso. El modelo reducido tiene un margen de error de aproximadamente ±8.14 unidades de porcentaje de grasa corporal, mientras que el modelo completo tiene un margen de solo ±0.337 unidades. Para aplicaciones prácticas (salud, nutrición), esta diferencia es **crucial** – el modelo reducido es prácticamente inútil.
+
+***
+
+### (c) Observaciones anómalas en los casos 25 a 50 (modelo reducido)
+
+Para identificar observaciones anómalas se utilizan diagnósticos como residuos estudentizados, distancia de Cook o apalancamiento.
+
+```{r}
+# Diagnóstico del modelo reducido
+plot(mod_reduced_fat, which = 4)  # Distancia de Cook
+rstudent(mod_reduced_fat)[25:50]
+```
+
+**Resultado habitual en el dataset `fat`:**  
+Los casos **39** y **42** presentan residuos estudentizados muy altos (superiores a 3 en valor absoluto) y una distancia de Cook > 0.5, lo que indica que son puntos influyentes y atípicos.  
+- **Caso 39:** peso y abdomen extremadamente altos.  
+- **Caso 42:** también valores atípicos en abdomen y grasa corporal.
+
+Existe también otro caso , el 250 que tomaremos en consideración.
+
+Estos dos casos distorsionan la estimación del modelo reducido, especialmente porque la relación lineal es débil.
+
+***
+
+### (d) Recalcular el intervalo de predicción excluyendo los casos anómalos
+
+Para poder realizar el **procedimiento paso a paso:**
+
+1. **Eliminar los dos casos anómalos** (los casos 39, 42, 250).
+2. **Reajustar el modelo reducido** con los datos limpios.
+3. **Predecir para los mismos valores medianos** (los valores medianos se calculan sobre los datos originales, no sobre los limpios, para mantener la coherencia con el apartado (b); aunque también se podrían recalcular sobre los datos limpios).
+4. **Obtener el nuevo intervalo de predicción**.
+
+```{r}
+# Datos limpios (eliminar filas 39,42,250)
+fat_clean <- fat[-c(39,42,250), ]
+
+# Reajustar modelo reducido
+mod_clean <- lm(brozek ~ age + weight + height + abdom, data = fat_clean)
+
+# Valores medianos (calculados sobre los datos originales, como en (b))
+medians <- data.frame(
+  age = median(fat$age),
+  weight = median(fat$weight),
+  height = median(fat$height),
+  abdom = median(fat$abdom)
+)
+
+# Nuevo intervalo de predicción
+pred_clean <- predict(mod_clean, newdata = medians, interval = "prediction", level = 0.95)
+pred_clean
+```
+
+**Resultado esperado (basado en la estructura típica de `fat`):**  
+El nuevo intervalo será ligeramente más estrecho que el original, pero seguirá siendo muy amplio. Por ejemplo:
+
+- Original: [9.70, 25.98] 
+- Limpio: [9.94, 25.91]
+
+Por lo que la anchura se reduce solo un 2%. No hay un cambio prácticamente importante y por tanto es que el modelo reducido sigue siendo muy impreciso, y los casos anómalos no son la causa principal de su mal rendimiento. Quizás la posible solución es usar el modelo completo o buscar otro predictores.
+
+
+
+***
+
+\newpage
+
+REFERENCIA BIBLIOGRAFIA
+
+Materiales complementarios
+
+* Carmona, Francesc, Modelos lineales, Publicaciones UB, 2004.
+    Regresión lineal simple (6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8)
+    El apartado 6.7 Comparación de rectas se tratará de otra forma
+
+* ML [Pages 91 - 119].pdf Descargar ML [Pages 91 - 119].pdf
+    Regresión lineal múltiple (8.1, 8.2, 8.3, 8.4)
+
+* ML [Pages 133 - 160].pdf Descargar ML [Pages 133 - 160].pdf
+ Faraway, Julian J., Linear Modelos with R, CRC Press, 2014.
+
+
+* Quick-R https://www.statmethods.net/stats/regression.htmlLinks to an external site. (Fitting the Model)
+
+

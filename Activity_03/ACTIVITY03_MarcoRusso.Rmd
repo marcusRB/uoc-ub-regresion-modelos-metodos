@@ -1,0 +1,991 @@
+---
+title: 'Activity03: Inferencia y Contraste de hipótesis'
+author: "Marco Russo"
+date: "`r format(Sys.Date(), '%B, %Y')`"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+    keep_tex: false
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+header-includes:
+- \usepackage{xcolor}
+- \usepackage{framed}
+- \usepackage{listings}
+- \usepackage{fancyhdr}
+- \usepackage{geometry}
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{graphicx}
+- \geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+- \pagestyle{fancy}
+- \fancyhead[R]{Marco Russo}
+- \fancyfoot[C]{\thepage}
+- \renewcommand{\headrulewidth}{0.4pt}
+- \renewcommand{\footrulewidth}{0.4pt}
+params:
+  author: MarcusRB
+  email: mrussorb@uoc.edu
+  github: 
+  linkedin: https://www.linkedin.com/in/marcusrb/
+---
+
+\newpage
+
+# Información del Estudiante
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Nombre} & Marco Russo \\
+\hline
+\textbf{Email} & mrussorb@uoc.edu \\
+\hline
+\textbf{GitHub} &  \\
+\hline
+\textbf{LinkedIn} & https://www.linkedin.com/in/marcusrb/ \\
+\hline
+\textbf{Fecha} & \today \\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,           # Mostrar código
+  warning = FALSE,       # No mostrar warnings
+  message = FALSE,       # No mostrar mensajes
+  fig.align = 'center',  # Centrar figuras
+  fig.width = 8,         # Ancho de figuras
+  fig.height = 5,        # Alto de figuras
+  out.width = '80%',     # Tamaño de salida
+  cache = FALSE,         # No cachear resultados
+  tidy = TRUE,           # Formatear código
+  tidy.opts = list(width.cutoff = 60)
+)
+```
+
+# Ejercicios del libro de Faraway
+
+## **Ejercicio 1 (cap. 3 pág. 48)**
+
+```{r}
+# Cargamos los datos
+library(faraway)
+```
+
+### (a) Intervalos de confianza para el coeficiente de `age`
+
+```{r}
+# Modelo con todas las variables
+data(prostate)
+mod <- lm(lpsa ~ ., data = prostate)
+summary(mod)
+```
+
+```{r}
+# Cargamos los IC 90 y 95 de age
+confint(mod, "age", level = 0.90)
+confint(mod, "age", level = 0.95)
+```
+
+> El IC al 90%: $(-0.0382, -0.0011)$ **no contiene el cero**, por lo que a un nivel de significación $\alpha = 0.10$ rechazaríamos la hipótesis nula $H_0: \beta_{\text{age}} = 0$. Por lo tanto el p‑valor es menor que 0.10.
+Mientras que el IC al 95%: $(-0.0418, 0.0026)$ **contiene el cero**, por lo que a $\alpha = 0.05$ no podemos rechazar $H_0$. Por tanto, el p‑valor es mayor que 0.05. En conjunto, podemos deducir que el p‑valor asociado a la edad se encuentra entre 0.05 y 0.10.
+
+***
+
+### (b) Región de confianza conjunta para `age` y `lbph`
+
+
+```{r}
+# Extraeremos los índices de los coeficientes de age y lbph
+coef_names <- names(coef(mod))
+idx_age <- which(coef_names == "age")
+idx_lbph <- which(coef_names == "lbph")
+```
+
+
+```{r}
+# Región de confianza (elipse) al 95%
+library(ellipse)
+plot(ellipse(mod, which = c(idx_age, idx_lbph), level = 0.95),
+     type = "l", xlab = "age", ylab = "lbph", 
+     main = "Región de confianza conjunta 95% para age y lbph")
+points(coef(mod)[idx_age], coef(mod)[idx_lbph], pch = 19, col = "red")
+abline(v = 0, h = 0, lty = 2, col = "gray")
+```
+
+La elipse representa la región de confianza conjunta al 95% para $\beta_{age}$, $\beta_{lbph}$.
+El punto (0,0) está marcado con líneas de puntos. Si el origen estuviera dentro de la elipse, no podríamos rechazar la hipótesis conjunta $H_0$: $\beta_{age} = 0$ y $\beta_{lbph} = 0$. En la gráfica se observa que el origen está cerca del borde pero probablemente fuera de la elipse, podría ser que al menos uno de los dos coeficientes es significativamente distinto de cero como también individualmente ninguno alcanza el 5%.
+
+
+### (c) Test de permutación para el coeficiente de `age`
+
+```{r}
+# Estadístico t observado
+t_obs <- summary(mod)$coefficients["age", "t value"]
+```
+
+
+```{r}
+# Creamos la función para permutar la respuesta y calcularemos el estadístico t para age
+perm_t_age <- function(data, i) {
+  # i: permutación de las filas
+  mod_perm <- lm(lpsa ~ ., data = data[i, ])
+  summary(mod_perm)$coefficients["age", "t value"]
+}
+
+set.seed(123)
+t_perm <- replicate(4000, perm_t_age(prostate, sample(nrow(prostate), replace = TRUE)))
+
+# Obtenemos el p-valor permutacional o bilateral
+p_perm <- mean(abs(t_perm) >= abs(t_obs))
+p_perm
+```
+
+La diferencia entre el p‑valor paramétrico (0.1538) y el de permutaciones (0.5207) indica que la distribución del estadístico $t$ bajo la hipótesis nula no se ajusta bien a la distribución *t de Student*, quizás debido a una violación del supuesto de normalidad de los errores. En este caso, el test de permutaciones, que no requiere normalidad, proporciona un p‑valor más grande y, por tanto, una evidencia aún más débil contra $H_0$. Ambos tests no permiten rechazar la hipótesis nula al nivel del 5%, pero el resultado del test de permutaciones sugiere que el p‑valor paramétrico podría ser demasiado optimista (subestimado) debido a la falta de normalidad. En consecuencia, la inferencia basada en el test de permutaciones es más fiable en este contexto.
+
+***
+
+### (d) Eliminar predictores no significativos al 5%
+
+```{r}
+# Modelo reducido: eliminar predictors con p > 0.05 (excepto intercepto)
+summary(mod)$coefficients
+
+# p-values > 0.05: age, lbph, lcp, gleason, pgg45 (notar que lbph = 0.071 > 0.05)
+mod_reduced <- lm(lpsa ~ lcavol + lweight + svi, data = prostate)
+
+# Comparación F-test
+anova(mod_reduced, mod)
+```
+
+El p‑valor del F‑test es 0.21671 > 0.05, por lo que no rechazamos el modelo reducido. Preferimos el modelo más parsimonioso es decir con menos predictores.
+
+
+\newpage
+
+***
+
+## **Ejercicio 2. (cap. 3 pág. 49)**
+
+### (a) Modelo con variables logarítmicas (como en los datos originales)
+
+```{r}
+data(cheddar)
+mod_log <- lm(taste ~ Acetic + H2S + Lactic, data = cheddar)
+summary(mod_log)
+```
+
+> Los tres predictores son significativos al 5%.
+
+***
+
+### (b) Modelo con las variables en escala original (sin logaritmos)
+
+```{r}
+# Crearemos las versiones originales (no logarítmicas) de Acetic y H2S
+# cómo os datos originales ya están en log, por lo que debemos exponenciar.
+cheddar$Acetic_orig <- exp(cheddar$Acetic)
+cheddar$H2S_orig   <- exp(cheddar$H2S)
+
+# Lactic ya está en escala original (no log)
+mod_orig <- lm(taste ~ Acetic_orig + H2S_orig + Lactic, data = cheddar)
+summary(mod_orig)
+```
+
+En este modelo tenemos los siguientes valores para Lactic que es significativo al 5% (p = 0.0105). 
+H2S_orig es marginalmente significativo al 10% (p = 0.0786).
+Acetic_orig no es significativo (p = 0.2371).
+
+***
+
+### (c) Comparación de los dos modelos
+
+Los dos modelos **no son anidados** porque la relación entre los predictores no es lineal: pasar de `Acetic` a `Acetic_orig` es una transformación no lineal (exponencial). Por tanto **no se puede utilizar un test F** para compararlos directamente. Para poder decidir qué modelo se ajusta mejor, se pueden usar criterios de información o comparar el $R^2$ ajustado.
+
+Tenemos de un lado:
+- un modelo log: $R^2_{\text{adj}} \approx 0.629$
+- de otro lado un modelo original: $R^2_{\text{adj}} = 0.5264$
+
+El modelo logarítmico tiene un $R^2$ ajustado mayor, por lo que sería un mejor ajuste. Además, en el modelo original solo `Lactic` es significativo, mientras que en el modelo log los tres predictores aportan información relevante. Por tanto, **el modelo con las variables en escala logarítmica es preferible**.
+
+
+***
+
+### (d) Cambio en `taste` al aumentar H2S en 0.01 (modelo log)
+
+En el modelo con log‑H2S, un aumento de 0.01 en H2S produce un cambio en la media de `taste` de por lo que tenemos:
+
+$$
+\Delta \text{taste} = \beta_{\text{H2S}} \times 0.01 = 3.3402 \times 0.01 = 0.0334
+$$
+
+***
+
+### (e) Cambio porcentual en H2S en escala original
+
+Si H2S en log aumenta en 0.01, entonces en la escala original tenemos:
+
+$$
+\text{H2S}_{orig, new} = e^{\log(\text{H2S}_{orig}) + 0.01} = \text{H2S}_{orig} \cdot e^{0.01} \approx \text{H2S}_{orig} \cdot (1 + 0.01005)
+$$
+
+El aumento porcentual es aproximadamente $(e^{0.01} - 1) \times 100\% \approx 1.005\%$.
+
+***
+
+\newpage
+
+## **Ejercicio 3 (cap. 3 pág. 49)**
+
+
+### (a) Modelo y significancia
+
+```{r}
+data(teengamb)
+mod <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
+summary(mod)
+```
+
+Las variables significativas al 5% son `sex` (p = 0.0101) e `income` (p < 0.001).
+
+***
+
+### (b) Interpretación del coeficiente de `sex`
+
+La característica `sex` es una variable dummy (0 = mujer, 1 = hombre). El coeficiente negativo (-22.12) indicando que, manteniendo constantes las otras variables, los hombres apuestan en promedio de 22 unidades menos que las mujeres. Es decir, las mujeres tienden a apostar más que los hombres, para esta muestra.
+
+
+\newpage
+
+## **Ejercicio 4 (cap. 3 pág. 49)**
+
+### (a) Modelo con tres predictores
+
+```{r}
+data(sat)
+mod1 <- lm(total ~ expend + ratio + salary, data = sat)
+summary(mod1)
+```
+
+Test $H_0$: $\beta_{salary} = 0$: $p = 0.667$, no se rechaza.
+Test conjunto $H_0$: $\beta_{salary} = \beta_{ratio} = \beta_{expend} = 0$, es decir modelo nulo:  
+
+El estadístico F del summary es 4.066 (p = 0.01209), que al nivel 0.05 se rechaza la hipótesis de que todos los coeficientes son cero. Al menos un predictor tiene efecto.
+
+***
+
+### (b) Añadir `takers`
+
+```{r}
+mod2 <- lm(total ~ expend + ratio + salary + takers, data = sat)
+summary(mod2)
+```
+> el test $H_0$: $\beta_{takers} = 0: p ≈ 2.61e-16$, por lo tanto se rechaza.
+
+Comparación de modelos mediante F‑test:
+
+```{r}
+anova(mod1, mod2)
+```
+Si realizamos la comparativa con el t-test
+
+- Estadístico t para takers en mod2: –12.559
+- $t^2$ = 157.74, que coincide (salvo redondeo) con el F del anova.
+
+Por tanto, el test F (tipo I secuencial) para la inclusión de takers y el test t para su coeficiente en el modelo completo son equivalentes, siempre que se utilice el orden adecuado (en este caso, al añadir takers en último lugar se obtiene el mismo valor que en el test t parcial tipo III).
+Por lo que la variable takers es el predictor más relevante; su inclusión mejora el ajuste, así que el modelo con takers es preferible al modelo sin ella.
+
+***
+
+## **Ejercicio 5 (cap. 3 pág. 50)**
+
+Para el test global de regresión $H_0$, todos los coeficientes excepto el intercepto son cero, mientras que para el estadístico $F$ se puede expresar en términos de $R^2$:
+
+$$
+F = \frac{R^2 / p}{(1 - R^2)/(n - p - 1)}
+$$
+
+donde $p$ es el número de predictores tener en cuenta del intercepto).
+Despejando tenemos:
+
+$$
+R^2 = \frac{pF}{pF + (n - p - 1)}.
+$$
+
+\newpage
+
+***
+
+## **Ejercicio 6 (cap. 3 pág. 50)**
+
+### (a) Modelo y significancia
+
+```{r}
+data(happy)
+mod <- lm(happy ~ money + sex + love + work, data = happy)
+summary(mod)
+```
+
+Al 1%, solo `love` es significativo (p = 1.97e-07), mientras que `money` es significativo al 5% pero no al 1%.
+
+***
+
+### (b) Resumen de la respuesta y suposición
+
+```{r}
+table(happy$happy)
+```
+
+La variable `happy` es una escala de 0 a 10. Al ser discreta, la distribución de los residuos puede no ser normal, y por el supuesto de normalidad para los errores es cuestionable.
+
+***
+
+### (c) Test de permutación para `money`
+
+```{r}
+t_obs <- summary(mod)$coefficients["money", "t value"]
+
+# Creamos la función de permutación
+perm_t_money <- function(data, i) {
+  mod_perm <- lm(happy ~ money + sex + love + work, data = data[i, ])
+  summary(mod_perm)$coefficients["money", "t value"]
+}
+
+set.seed(123)
+t_perm <- replicate(4000, perm_t_money(happy, sample(nrow(happy), replace = TRUE)))
+
+p_perm <- mean(abs(t_perm) >= abs(t_obs))
+p_perm
+```
+
+
+El resultado del p‑valor permutacional ≈ 0.053225, el paramétrico es 0.0749
+Según parece, que ambos p‑valores están por encima de 0.05, por lo que en ningún caso se rechaza $H_0: \beta_{\text{money}} = 0$.  
+Sin embargo, hay una gran discrepancia: el paramétrico tiende a cierta evidencia marginal (p ≈ 0.075), mientras que el de permutaciones indica una evidencia muy débil (p ≈ 0.53). Por lo que podemos pensar a que esto ocurre por la distribución de los residuos no es normal, y el test de permutaciones, que no asume normalidad, es más fiable. En este caso, el test paramétrico podría estar subestimando el verdadero p‑valor debido a la falta de normalidad.
+
+
+***
+
+### (d) Histograma de los estadísticos t de permutación
+
+```{r}
+hist(t_perm, probability = TRUE, breaks = 30,
+     main = "Permutation t‑statistics for money",
+     xlab = "t", col = "lightblue")
+```
+
+***
+
+### (e) Superponer la densidad t teórica
+
+```{r}
+hist(t_perm, probability = TRUE, breaks = 30,
+     main = "Permutation t‑statistics for money",
+     xlab = "t", col = "lightblue")
+grid <- seq(-3, 3, length = 300)
+lines(grid, dt(grid, df = nrow(happy)), col = "red", lwd = 2)
+```
+
+***
+
+### (f) Intervalos bootstrap para $\beta_{\text{money}}$
+
+```{r}
+library(boot)
+library(car)
+```
+
+```{r}
+
+mod <- lm(happy ~ money + sex + love + work, data = happy)
+B <- Boot(mod, f = coef, R = 4000, method = "residual")
+
+# Intervalos de confianza bootstrap (percentil)
+boot.ci(B, type = "perc", index = 2)
+```
+
+En este caso, el IC 95% **contiene el cero**, mientras que el IC 90% podría no contenerlo, lo cual es consistente con el p‑valor paramétrico de 0.0749 (significativo al 10% pero no al 5%). El bootstrap refuerza la conclusión de que la evidencia para un efecto de `money` es débil y depende del nivel de confianza elegido.
+
+\newpage
+
+
+## **Ejercicio 7 (cap. 3 pág. 50)**
+
+### (a) Modelo y significancia
+
+```{r}
+data(punting)
+mod_dist <- lm(Distance ~ RStr + LStr + RFlex + LFlex, data = punting)
+summary(mod_dist)
+```
+
+Ningún predictor es significativo al 5%. RFlex tiene p=0.137, el menor del resto y podría ser casi significativo.
+
+***
+
+### (b) Test F global
+
+El F global obtenido de los resultados anteriores es 5.59 on 4 and 8 DF, p-value 0.01902.
+No se rechaza $H_0$ de que todos los coeficientes son cero.
+
+***
+
+### (c) Test de igualdad de efectos de RStr y LStr
+
+$H_0$: $\beta_{RStr} = \beta_{LStr} → \beta_{RStr} – \beta_{LStr} = 0$
+
+```{r}
+library(car)
+linearHypothesis(mod_dist, "RStr = LStr")
+```
+
+No se rechaza $H_0$ (p = 0.468).
+
+***
+
+### (d) Región de confianza conjunta para (\beta_RStr, \beta_LStr)
+
+```{r}
+library(ellipse)
+
+# Modelo con Distance
+mod_dist <- lm(Distance ~ RStr + LStr + RFlex + LFlex, data = punting)
+
+# Región de confianza al 95% para RStr y LStr
+plot(ellipse::ellipse(mod_dist, which = c("RStr", "LStr"), level = 0.95),
+     type = "l", xlab = "RStr", ylab = "LStr",
+     main = "Región de confianza 95% para RStr y LStr")
+
+# Línea de igualdad (RStr = LStr)
+abline(0, 1, col = "red", lty = 2)
+
+# Punto estimado de los coeficientes
+points(coef(mod_dist)["RStr"], coef(mod_dist)["LStr"], pch = 19)
+```
+
+La línea de igualdad $\beta_{RStr} = \beta_{LStr}$ cruza la elipse, indicando que el valor 0 de la diferencia está dentro de la región, consistente con el test de igualdad.
+
+***
+
+### (e) Modelo con fuerza total (RStr + LStr)
+
+```{r}
+mod_total <- lm(Distance ~ I(RStr + LStr) + RFlex + LFlex, data = punting)
+anova(mod_total, mod_dist)
+```
+
+Al parecer no hay evidencia de que la fuerza total sea insuficiente p=0.468.
+
+***
+
+### (f) Test de igualdad de efectos de RFlex y LFlex
+
+```{r}
+linearHypothesis(mod_dist, "RFlex = LFlex")
+```
+
+El resultado obtenido es p = 0.2017, no se rechaza.
+
+***
+
+### (g) Test simultáneo de simetría izquierda‑derecha
+
+Con $H_0$: $\beta_{RStr} = \beta_{LStr} y \beta_{RFlex} = \beta_{LFlex}$.
+
+```{r}
+linearHypothesis(mod_dist, c("RStr = LStr", "RFlex = LFlex"))
+```
+
+El resultado obtenido es p = 0.337, no se rechaza la simetría.
+
+***
+
+### (h) Modelo para Hang
+
+```{r}
+mod_hang <- lm(Hang ~ RStr + LStr + RFlex + LFlex, data = punting)
+summary(mod_hang)
+```
+
+Los dos modelos (Distance y Hang) no son anidados (tienen la misma estructura pero diferente respuesta), por lo que no se pueden comparar con un F‑test. Se pueden comparar con criterios de información (AIC, BIC) o con un test de razón de verosimilitud si se asume normalidad multivariante, pero no directamente con el test F para modelos lineales.
+
+\newpage
+
+***
+
+# Ejercicios del libro de Carmona
+
+## **Ejercicio 1**  
+
+
+### **Ejercicio 5.1 (Capítulo 5 página 86)**
+
+Al definir el modelo lineal que engloba ambas muestras. Sean $x_1,\dots,x_{n_1}$ e $y_1,\dots,y_{n_2}$ las observaciones.
+
+$$
+\begin{pmatrix}
+x_1 \\ 
+\vdots \\
+x_{n_1} \\
+y_1 \\ 
+\vdots \\
+y_{n_2}
+\end{pmatrix}
+=
+\begin{pmatrix}
+1 & 0 \\
+\vdots & \vdots \\
+1 & 0 \\
+0 & 1 \\
+\vdots & \vdots \\
+0 & 1
+\end{pmatrix}
+\begin{pmatrix}
+\mu_1 \\
+\mu_2
+\end{pmatrix}
++
+\boldsymbol{\varepsilon}
+$$
+
+La matriz de diseño reducida es:
+
+$$
+\textbf{X}_R =
+\begin{pmatrix} 
+1 & 0 \\ 
+0 & 1 
+\end{pmatrix}
+$$
+
+y la matriz $\textbf{D} = \operatorname{diag}(n_1, n_2)$. El rango de $\textbf{X}_R$ es $r = 2$. 
+
+Mientras que la hipótesis $H_0: \mu_1 = \mu_2$ se escribe como:
+
+$$
+\textbf{A} \boldsymbol{\beta} = 0 \quad \text{con} \quad \textbf{A} = \begin{pmatrix} 1 & -1 \end{pmatrix}
+$$
+
+Las filas de $\textbf{A}$ son combinación lineal de las filas de $\textbf{X}_R$, pues 
+
+$$
+\textbf{A} = 
+\begin{pmatrix} 
+1 & -1 
+\end{pmatrix} 
+= 
+\begin{pmatrix} 
+1 & 0 
+\end{pmatrix} 
+- 
+\begin{pmatrix} 
+0 & 1 
+\end{pmatrix}
+$$
+
+luego la hipótesis es contrastable.
+
+Las estimaciones MC sin restricción son $\hat{\mu}_1 = \bar{x}$, $\hat{\mu}_2 = \bar{y}$, y la suma de cuadrados residual es:
+
+$$
+SCR = \sum_{i=1}^{n_1} (x_i - \bar{x})^2 + \sum_{j=1}^{n_2} (y_j - \bar{y})^2
+$$
+
+Bajo $H_0$, el modelo restringido es $y_{ij} = \mu + \varepsilon_{ij}$ con $\mu$ común. La estimación restringida es $\tilde{\mu} = \frac{n_1\bar{x} + n_2\bar{y}}{n_1+n_2}$ y la suma de cuadrados residual bajo $H_0$ es:
+
+$$
+SCR_H = \sum_{i=1}^{n_1} (x_i - \tilde{\mu})^2 + \sum_{j=1}^{n_2} (y_j - \tilde{\mu})^2
+$$
+
+La diferencia $SCR_H - SCR$ se puede expresar como:
+
+$$
+SCR_H - SCR = \frac{n_1 n_2}{n_1+n_2} (\bar{x} - \bar{y})^2
+$$
+
+El estadístico F es:
+
+$$
+F = \frac{(SCR_H - SCR)/1}{SCR/(n_1+n_2-2)} = \frac{ \frac{n_1 n_2}{n_1+n_2} (\bar{x} - \bar{y})^2 }{ \frac{SCR}{n_1+n_2-2} }
+$$
+
+El estadístico t de Student para comparación de medias (varianzas iguales) es:
+
+$$
+t = \frac{\bar{x} - \bar{y}}{ \sqrt{ \frac{SCR}{n_1+n_2-2} \left( \frac{1}{n_1} + \frac{1}{n_2} \right) } }
+$$
+
+Por lo que se comprueba que $t^2 = F$, por lo que el test F con 1 y $n_1+n_2-2$ grados de libertad es equivalente al test t bilateral.
+
+---
+
+\newpage
+
+### **Ejercicio 5.2 (Capítulo 5 página 86)**
+
+El modelo completo tiene matriz de diseño:
+
+$$
+\textbf{X} = 
+\begin{pmatrix}
+1 & 1 & 1 \\
+1 & 2 & 4 \\
+1 & 3 & 9 \\
+1 & 4 & 16
+\end{pmatrix}
+$$
+
+La hipótesis $H_0: \beta_2 = 0$ es contrastable (rango máximo). Bajo $H_0$ el modelo se reduce a $y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$, con matriz de diseño $\textbf{X}_0$ formada por las dos primeras columnas de $\textbf{X}$.
+
+Sean:
+- $SCR$ = suma de cuadrados residual del modelo completo (con $\beta_2$).
+- $SCR_H$ = suma de cuadrados residual del modelo reducido (sin $\beta_2$).
+
+Entonces el estadístico F es:
+
+$$
+F = \frac{(SCR_H - SCR) / 1}{SCR / (4 - 3)} = \frac{SCR_H - SCR}{SCR}
+$$
+
+donde $SCR$ tiene $4-3 = 1$ grado de libertad (pues el modelo completo tiene 4 observaciones y 3 parámetros). Por tanto, el estadístico se simplifica a:
+
+$$
+F = \frac{SCR_H - SCR}{SCR}
+$$
+
+Las expresiones explícitas:
+
+$$
+SCR = \sum_{i=1}^4 (y_i - \hat{y}_i)^2, \quad \hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i + \hat{\beta}_2 x_i^2
+$$
+
+
+$$
+SCR_H = \sum_{i=1}^4 (y_i - \tilde{y}_i)^2, \quad \tilde{y}_i = \tilde{\beta}_0 + \tilde{\beta}_1 x_i
+$$
+
+donde $\hat{\beta}$ son los MC del modelo completo y $\tilde{\beta}$ los del modelo restringido.
+
+---
+
+\newpage
+
+### **Ejercicio 5.5 (Capítulo 5 página 87)**
+
+Las cuatro ecuaciones pueden verse como observaciones de un modelo lineal sin término de error aparente, pero suponemos que hay errores independientes $N(0,\sigma^2)$:
+
+$$
+\textbf{Y} = 
+\begin{pmatrix}
+6.6 \\ 
+7.8 \\ 
+2.1 \\ 
+0.4
+\end{pmatrix},
+\quad
+\textbf{X} = 
+\begin{pmatrix}
+1 & 1 \\ 
+2 & 1 \\ 
+-1 & 1 \\ 
+2 & -1
+\end{pmatrix},
+\quad
+\textbf{Y} = \textbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon},\quad \boldsymbol{\beta} = (\beta_1,\beta_2)'.
+$$
+
+Entonces, primero verifiquemos que la hipótesis $H_0: \beta_2 = 2\beta_1$ es contrastable. En forma matricial: $\textbf{A}\boldsymbol{\beta} = 0$ con $\textbf{A} = (-2, 1)$. El rango de $\textbf{X}$ es 2 (máximo), luego toda hipótesis lineal es contrastable.
+
+Finalmente estimamos $\boldsymbol{\beta}$ por mínimos cuadrados:
+
+$$
+\hat{\boldsymbol{\beta}} = (\textbf{X}'\textbf{X})^{-1}\textbf{X}'\textbf{Y}
+$$
+
+calculamos y obtenemos:
+
+$$
+\textbf{X}'\textbf{X} =
+\begin{pmatrix}
+1^2+2^2+(-1)^2+2^2 & 1\cdot1+2\cdot1+(-1)\cdot1+2\cdot(-1) \\
+\text{sim.} & 1^2+1^2+1^2+(-1)^2
+\end{pmatrix}
+=
+\begin{pmatrix}
+1+4+1+4 & 1+2-1-2 \\
+1+2-1-2 & 1+1+1+1
+\end{pmatrix}
+=
+\begin{pmatrix}
+10 & 0 \\
+0 & 4
+\end{pmatrix}
+$$
+
+
+$$
+\textbf{X}'\textbf{Y} =
+\begin{pmatrix}
+1\cdot6.6 + 2\cdot7.8 + (-1)\cdot2.1 + 2\cdot0.4 \\
+1\cdot6.6 + 1\cdot7.8 + 1\cdot2.1 + (-1)\cdot0.4
+\end{pmatrix}
+=
+\begin{pmatrix}
+6.6 + 15.6 - 2.1 + 0.8 \\
+6.6 + 7.8 + 2.1 - 0.4 
+\end{pmatrix}
+=
+\begin{pmatrix}
+20.9 \\ 
+16.1
+\end{pmatrix}
+$$
+
+Finalmente tenemos:
+
+$$
+\hat{\beta}_1 = \frac{20.9}{10} = 2.09,\quad \hat{\beta}_2 = \frac{16.1}{4} = 4.025
+$$
+
+
+Por lo que respecta a la suma de cuadrados residual:
+
+$$
+SCR = \|\textbf{Y} - \textbf{X}\hat{\boldsymbol{\beta}}\|^2
+$$
+
+y finalmente calculamos $\textbf{X}\hat{\boldsymbol{\beta}}$:
+
+$$
+\begin{pmatrix}
+1\cdot2.09 + 1\cdot4.025 = 6.115 \\ 
+2\cdot2.09 + 1\cdot4.025 = 8.205 \\
+-1\cdot2.09 + 1\cdot4.025 = 1.935 \\
+2\cdot2.09 - 4.025 = 4.18 - 4.025 = 0.155
+\end{pmatrix}
+$$
+
+Los residuos:
+
+$$
+\textbf{e} = 
+\begin{pmatrix}
+6.6 - 6.115 = 0.485 \\
+7.8 - 8.205 = -0.405 \\
+2.1 - 1.935 = 0.165 \\
+0.4 - 0.155 = 0.245
+\end{pmatrix}
+$$
+
+$$
+SCR = 0.485^2 + (-0.405)^2 + 0.165^2 + 0.245^2 = 0.235225 + 0.164025 + 0.027225 + 0.060025 = 0.4865
+$$
+
+Entonces bajo $H_0: \beta_2 = 2\beta_1$, el modelo vuelve a parametrizar como $\beta_1 = \theta,\ \beta_2 = 2\theta$, es decir $\boldsymbol{\beta} = (1,2)'\theta$. 
+
+La matriz de diseño de $H_0$ es:
+
+$$
+\textbf{X}_0 = \textbf{X}
+\begin{pmatrix}
+1 \\
+2
+\end{pmatrix}
+= 
+\begin{pmatrix}
+1\cdot1 + 1\cdot2 = 3 \\
+2\cdot1 + 1\cdot2 = 4 \\
+-1\cdot1 + 1\cdot2 = 1 \\
+2\cdot1 - 1\cdot2 = 0
+\end{pmatrix}
+$$
+
+Y finalmente la estimación de $\theta$:
+
+$$
+\hat{\theta} = (\textbf{X}_0'\textbf{X}_0)^{-1}\textbf{X}_0'\textbf{Y} = \frac{3\cdot6.6 + 4\cdot7.8 + 1\cdot2.1 + 0\cdot0.4}{3^2+4^2+1^2+0^2} = \frac{19.8 + 31.2 + 2.1}{9+16+1} = \frac{53.1}{26} = 2.0423077
+$$
+
+Las predicciones de la hipótesis $H_0$: $\textbf{X}_0\hat{\theta} = 2.0423077 \cdot (3,4,1,0)' = (6.1269, 8.1692, 2.0423, 0)$.
+
+donde los residuos bajo $H_0$ son: 
+
+$$
+\textbf{e}_0 = (6.6-6.1269, 7.8-8.1692, 2.1-2.0423, 0.4-0) = (0.4731, -0.3692, 0.0577, 0.4)
+$$
+
+$$
+SCR_H = 0.4731^2 + 0.3692^2 + 0.0577^2 + 0.4^2 = 0.2238 + 0.1363 + 0.00333 + 0.16 = 0.5234
+$$
+
+$$
+SCR_H - SCR = 0.5234 - 0.4865 = 0.0369
+$$
+
+$$
+F = \frac{(SCR_H - SCR)/1}{SCR/(4-2)} = \frac{0.0369}{0.4865/2} = \frac{0.0369}{0.24325} \approx 0.1517
+$$
+
+Con $q=1$, $n-r=2$, el valor crítico $F_{1,2}(0.05) \approx 18.51$. Como $F=0.1517 < 18.51$, no se rechaza $H_0$; es decir, los datos son compatibles con $\beta_2 = 2\beta_1$.
+
+***
+
+\newpage
+
+### **Ejercicio 5.6 (Capítulo 5 página 87)**
+
+El ejercicio 3.10 se refiere a un modelo de distancias. Aunque no tenemos los datos originales, podemos interpretar que se trata de contrastar una relación lineal entre parámetros.
+
+Por lo que en términos estadísticos, se puede formular la hipótesis nula $H_0: 2d_{AB} = d_{AC} + d_{CB}$ (o algo similar) y contrastarla con los datos disponibles mediante un test F en un modelo lineal que incluya las distancias observadas.
+
+Entonces si la hipótesis es contrastable y el test F no es significativo, no hay evidencia para rechazar la afirmación del amigo. Mientras que si es significativo, entonces los datos sugieren que la relación no se cumple.
+
+---
+
+\newpage
+
+### **Ejercicio 5.10 (Capítulo 5 página 88)**
+
+El modelo proporcionado es:
+
+$$
+\begin{aligned}
+y_1 &= \alpha + \epsilon_1, & y_2 &= \alpha + \epsilon_2, \\
+y_3 &= -\alpha + \epsilon_3, & y_4 &= -\alpha + \epsilon_4, \\
+y_5 &= \beta + \epsilon_5, & y_6 &= \beta + \epsilon_6, \\
+y_7 &= -\beta + \epsilon_7, & y_8 &= -\beta + \epsilon_8, \\
+y_9 &= -\alpha - \beta + \epsilon_9, & y_{10} &= -\alpha - \beta + \epsilon_{10}, \\
+y_{11} &= \alpha + \beta + \epsilon_{11}, & y_{12} &= \alpha + \beta + \epsilon_{12}
+\end{aligned}
+$$
+
+con $y_i$ transformaciones de las observaciones originales $x_i$.
+La matriz de diseño reducida $\textbf{X}_R$ (para los parámetros $\alpha,\beta$) es de rango 2.
+
+La hipótesis $H_0: \alpha = \beta = 60$ puede reescribirse como $H_0: \alpha = 60,\ \beta = 60$. Como el rango de $\textbf{X}_R$ es 2, la hipótesis es contrastabl, que en realidad es un conjunto de dos restricciones lineales. La forma de contrastarla es mediante un test F con $q=2$ y grados de libertad $n-r = 12-2 = 10$.
+
+Para aplicar el test necesitamos los valores observados de los ángulos. Entonces, supongamos que tenemos las 12 observaciones, tenemos:
+
+De un lado estimamos $\alpha$ y $\beta$ por mínimos cuadrados, lo promedios de las observaciones correspondientes, dado el diseño balanceado.
+
+Mostramos un ejemplo:
+
+$$
+\hat{\alpha} = \frac{y_1+y_2 - y_3 - y_4 + y_{11}+y_{12} - y_9 - y_{10}}{8}
+$$
+
+$$
+\hat{\beta} = \frac{y_5+y_6 - y_7 - y_8 + y_{11}+y_{12} - y_9 - y_{10}}{8}
+$$
+
+
+Finalmente calculamos la suma de cuadrados residual sin restricciones: $SCR = \sum_{i=1}^{12} (y_i - \hat{y}_i)^2$, donde $\hat{y}_i$ son las predicciones según las fórmulas del modelo.
+
+Observamos bajo $H_0$, y nos fijamos $\alpha = 60,\ \beta = 60$ calculando $SCR_H = \sum_{i=1}^{12} (y_i - \mu_i)^2$, donde $\mu_i$ son los valores esperados correspondientes (p.ej., para $y_1$ sería 60, para $y_3$ sería -60, etc.).
+
+Finalmente el estadístico es $F = \frac{(SCR_H - SCR)/2}{SCR/10}$. Se compara con $F_{2,10}(\alpha)$ para decidir.
+
+
+---
+
+\newpage
+
+### Otros ejercicios
+
+El modelo con interacciones no recíprocas es:
+
+$$
+\begin{aligned}
+\text{Grupo 1 (a luego b):}& \quad y_{1i} = \mu + \alpha + \epsilon_{1i},\quad y_{2i} = \mu + \beta + \gamma_{ab} + \epsilon_{2i}\\
+\text{Grupo 2 (b luego a):}& \quad y_{3i} = \mu + \beta + \epsilon_{3i},\quad y_{4i} = \mu + \alpha + \gamma_{ba} + \epsilon_{4i}
+\end{aligned}
+$$
+
+La matriz de diseño reducida (para los parámetros $\mu,\alpha,\beta,\gamma_{ab},\gamma_{ba}$) es:
+
+$$
+\textbf{X}_R =
+\begin{pmatrix}
+1 & 1 & 0 & 0 & 0 \\
+1 & 0 & 1 & 1 & 0 \\
+1 & 0 & 1 & 0 & 0 \\
+1 & 1 & 0 & 0 & 1
+\end{pmatrix}
+$$
+
+Su rango es 4 (pues las columnas de $\mu,\alpha,\beta$ generan un subespacio de dimensión 3, y $\gamma_{ab},\gamma_{ba}$ añaden dos direcciones, pero hay una dependencia: la suma de la columna de $\gamma_{ab}$ y $\gamma_{ba}$ menos la columna de $\alpha$ y $\beta$ produce una combinación, pero en realidad el rango es 4 porque las cuatro condiciones experimentales son independientes).
+
+La hipótesis $H_0: \gamma_{ab} = \gamma_{ba}$ se escribe como $\textbf{A}\boldsymbol{\beta}=0$ con $\textbf{A} = (0,0,0,1,-1)$. Veamos si es contrastable: necesitamos que las filas de $\textbf{A}$ sean combinación lineal de las filas de $\textbf{X}_R$. Las filas de $\textbf{X}_R$ son vectores en $\mathbb{R}^5$.
+
+Una forma rápida es comprobar que $\textbf{A}(\textbf{X}_R'\textbf{X}_R)^{-}\textbf{X}_R'\textbf{X}_R = \textbf{A}$. Alternativamente, observamos que la función paramétrica $\gamma_{ab} - \gamma_{ba}$ es estimable porque podemos expresarla como combinación lineal de las medias muestrales: $\gamma_{ab} - \gamma_{ba} = (\bar{y}_{2.} - \bar{y}_{1.}) - (\bar{y}_{4.} - \bar{y}_{3.})$ (ignorando los efectos de $\mu,\alpha,\beta$).
+
+Podríamos pensar y suponer que la hipótesis es contrastable.
+
+Para contrastar $H_0$ con los datos de la tabla 5.2, podemos ajustar el modelo con R:
+
+```{r}
+# Datos del cross-over (ejemplo 5.3.2)
+y <- c(17,34,26,10,19,17,8,16,13,11,
+       17,41,26,3,-6,-4,11,16,16,4,
+       21,20,11,26,42,28,3,3,16,-10,
+       10,24,32,26,52,28,27,28,21,42)
+
+# Añadimos las variables del modelo con interacciones separadas
+alpha <- c(rep(1,10), rep(0,10), rep(0,10), rep(1,10))
+beta  <- c(rep(0,10), rep(1,10), rep(1,10), rep(0,10))
+gamma_ab <- c(rep(0,10), rep(1,10), rep(0,10), rep(0,10))
+gamma_ba <- c(rep(0,10), rep(0,10), rep(0,10), rep(1,10))
+
+# Calculamos
+mod_full <- lm(y ~ alpha + beta + gamma_ab + gamma_ba)
+mod_reduced <- lm(y ~ alpha + beta + I(gamma_ab + gamma_ba))  # bajo H0: gamma_ab = gamma_ba
+anova(mod_reduced, mod_full)
+```
+
+El p‑valor del test F indicará si se rechaza la igualdad de los efectos recíprocos.
+
+
+***
+
+BIBLIOGRAFIA
+
+Materiales complementarios
+
+* Faraway, Julian J., Linear Models with R, CRC Press, 2014.
+                 3. Inference (3.1, 3.2, 3.3, 3.4, 3.5)
+
+* Carmona, Francesc, Modelos lineales, Publicaciones UB, 2005.
+                3. Funciones paramétricas estimables (3.4, 3.5)
+                5. Contraste de hipótesis lineales (completo)
+                    Ejemplo 5.3.2 Diseño cross-over simplificado
+                                    Solución con R en el apartado 5.7
+
+* ML [Pages 69-89]
+
+* Irizarry. Data Analysis For Life Sciences.
+    Capítulo "Linear Models"
+
+* Quick-R https://www.statmethods.net/stats/regression.htmlLinks to an external site. (Fitting the Model)
+
+

@@ -1,0 +1,1044 @@
+---
+title: 'Activity01: Introducción al modelo lineal'
+author: "Marco Russo"
+date: "`r format(Sys.Date(), '%B, %Y')`"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+    keep_tex: false
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+header-includes:
+- \usepackage{xcolor}
+- \usepackage{framed}
+- \usepackage{listings}
+- \usepackage{fancyhdr}
+- \usepackage{geometry}
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{graphicx}
+- \geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+- \pagestyle{fancy}
+- \fancyhead[L]{ACTIVITY 1 - Introducción al modelo lineal}
+- \fancyhead[R]{Marco Russo}
+- \fancyfoot[C]{\thepage}
+- \renewcommand{\headrulewidth}{0.4pt}
+- \renewcommand{\footrulewidth}{0.4pt}
+params:
+  author: MarcusRB
+  email: mrussorb@uoc.edu
+  github: 
+  linkedin: https://www.linkedin.com/in/marcusrb/
+---
+
+\newpage
+
+# Información del Estudiante
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Nombre} & Marco Russo \\
+\hline
+\textbf{Email} & mrussorb@uoc.edu \\
+\hline
+\textbf{GitHub} &  \\
+\hline
+\textbf{LinkedIn} & https://www.linkedin.com/in/marcusrb/ \\
+\hline
+\textbf{Fecha} & \today \\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,           # Mostrar código
+  warning = FALSE,       # No mostrar warnings
+  message = FALSE,       # No mostrar mensajes
+  fig.align = 'center',  # Centrar figuras
+  fig.width = 8,         # Ancho de figuras
+  fig.height = 5,        # Alto de figuras
+  out.width = '80%',     # Tamaño de salida
+  cache = FALSE,         # No cachear resultados
+  tidy = TRUE,           # Formatear código
+  tidy.opts = list(width.cutoff = 60)
+)
+```
+
+# Ejercicios iniciales
+
+## 1.
+
+```{r}
+heartbpm <- c(47.53, 48.27, 49.51, 51.09, 52.57, 54.30,
+54.25, 54.45, 57.95, 60.92, 61.91, 77.92,
+82.07, 82.95, 83.94, 86.96, 90.42, 92.93, 100.05)
+
+metabol <- c(6.15, 6.31, 6.43, 6.78, 6.86, 6.90, 7.37, 7.41,
+8.24, 9.22, 8.16, 12.61, 15.26, 13.09, 14.59,
+17.35, 18.57, 19.00, 20.70)
+
+vulture <- data.frame(heartbpm, metabol)
+
+rm(heartbpm, metabol)
+attach(vulture)
+```
+
+### (a) Dibujar la nube de puntos con la instrucción plot().
+
+```{r}
+plot(heartbpm, metabol,
+     main = "Relación entre ritmo cardíaco y metabolismo",
+     xlab = "Ritmo cardíaco (ppm)",
+     ylab = "Metabolismo",
+     pch = 19, col = "blue")
+```
+
+```{r}
+# Aplicamos el ajuste del modelo lineal 
+modelo_lineal <- lm(metabol ~ heartbpm)
+summary(modelo_lineal)
+```
+
+***
+
+
+### (b) Añadir la recta de regresión con la instrucción abline().
+
+```{r}
+plot(heartbpm, metabol,
+     main = "Relación entre ritmo cardíaco y metabolismo",
+     xlab = "Ritmo cardíaco (ppm)",
+     ylab = "Metabolismo",
+     pch = 19, col = "blue")
+abline(modelo_lineal, col = "red", lwd = 2)
+```
+
+***
+
+### (c) Dibujar el gráfico de residuos vs. valores ajustados con la función plot() aplicada al objeto lm.
+
+```{r}
+par(mfrow = c(1,1))
+plot(modelo_lineal, which = 1,
+     main = "Residuos vs Valores Ajustados (lineal)")
+```
+
+***
+
+### (d) Añadir al gráfico de dispersión del apartado (a) la curva de regresión parabólica.
+Nota: Esto último se puede hacer con la instrucción lines() o con la instrucción curve( , add = TRUE).
+
+```{r}
+# Creamos el ajuste del modelo cuadrático
+modelo_cuad <- lm(metabol ~ heartbpm + I(heartbpm^2))
+```
+
+
+```{r}
+# Volveremos a dibujar con el punto b
+plot(heartbpm, metabol,
+     main = "Regresión lineal y parabólica",
+     xlab = "Ritmo cardíaco (ppm)",
+     ylab = "Metabolismo",
+     pch = 19, col = "blue")
+abline(modelo_lineal, col = "red", lwd = 2, lty = 2)
+
+```
+
+```{r}
+# Añadiremos la curva parabólica usando lines() con puntos ordenados
+# y finalmente ordenamos los valores de x para que la curva se dibuje correctamente
+plot(heartbpm, metabol,
+     main = "Regresión lineal y parabólica",
+     xlab = "Ritmo cardíaco (ppm)",
+     ylab = "Metabolismo",
+     pch = 19, col = "blue")
+abline(modelo_lineal, col = "red", lwd = 2, lty = 2)
+
+x_ordenado <- sort(heartbpm)
+y_parabola <- predict(modelo_cuad, newdata = data.frame(heartbpm = x_ordenado))
+lines(x_ordenado, y_parabola, col = "green", lwd = 2)
+
+# Aplicando la leyenda
+legend("topleft",
+       legend = c("Lineal", "Parabólica"),
+       col = c("red", "green"),
+       lwd = 2, lty = c(2,1))
+```
+
+En caso de aplicar el último punto indicado:
+> Nota: Esto último se puede hacer con la instrucción lines() o con la instrucción curve( , add = TRUE).
+
+```{r}
+plot(heartbpm, metabol,
+     main = "Regresión lineal y parabólica",
+     xlab = "Ritmo cardíaco (ppm)",
+     ylab = "Metabolismo",
+     pch = 19, col = "blue")
+
+# Añadiremos la recta de regresión lineal
+abline(modelo_lineal, col = "red", lwd = 2, lty = 2)
+
+# Se aplica la curva parabólica con curve()
+curve(predict(modelo_cuad, newdata = data.frame(heartbpm = x)),
+      add = TRUE, col = "green", lwd = 2)
+
+# Y finalmente añadimos la leyenda
+legend("topleft",
+       legend = c("Lineal", "Parabólica"),
+       col = c("red", "green"),
+       lwd = 2, lty = c(2, 1))
+```
+***
+
+## 2.
+
+Desde la tabla 1 Tensión Arterial Sistólica y Edad de 69 pacientes de Fisterra, 
+se crea el dataframe correspondiente de los diferentes vectores
+- tension_sistolica
+- edad
+
+```{r}
+# Numero pacientes
+observaciones <- 1:69
+
+# Vector: tension_sistolica
+tension_sistolica <- c(
+114,134,124,128,116,120,138,130,139,125,
+132,130,140,144,110,148,124,136,150,120,
+144,153,134,152,158,124,128,138,142,160,
+135,138,142,145,149,
+156,159,130,157,142,144,160,174,156,158,
+174,150,154,165,164,168,140,170,185,154,
+169,172,144,162,158,162,176,176,158,170,
+172,184,175,180
+)
+
+# Vector: ddad
+edad <- c(
+17,18,19,19,20,21,21,22,23,25,
+26,29,33,33,34,35,36,36,38,39,
+39,40,41,41,41,42,42,42,44,44,
+45,45,46,47,47,
+47,47,48,48,50,50,51,51,52,53,
+55,56,56,56,57,57,59,59,60,61,
+61,62,63,64,65,65,65,66,67,67,
+68,68,69,70
+)
+
+# Creamos el dataframe
+datos <- data.frame(
+  Num = observaciones,
+  Tension_Sistolica = tension_sistolica,
+  Edad = edad
+)
+
+# View dataframe
+datos
+```
+
+
+```{r}
+# Ajustaremos el modelo de regresión lineal obteniendo los coeficientes
+
+# Ajustando el modelo
+modelo <- lm(Tension_Sistolica ~ Edad, data=datos)
+
+# Coeficientes
+coef(modelo)
+```
+
+Tenemos que la tensión sistolica es igual a 103.35 + 0.98 por la Edad.
+Es decir que cada año adicional a la Edad, la tensión sistólica aumenta de un 0.98 mmHg
+
+
+
+```{r include=FALSE}
+# Observamos las librerías disponibles y descargaremos el resto
+library()
+if(!require('faraway')) install.packages('faraway'); library('faraway')
+# if(!require('tidyverse')) install.packages('tidyverse'); library('tidyverse')
+# if(!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+# if(!require('Rmisc')) install.packages('Rmisc'); library('Rmisc')
+# if(!require('dplyr')) install.packages('dplyr'); library('dplyr')
+# if(!require('xfun')) install.packages('xfun'); library('xfun')
+# if(!require('psych')) install.packages('psych'); library('psych')
+# if(!require('visdat')) install.packages('visdat'); library('visdat')
+```
+
+\newpage
+
+***
+
+## Ejercicio del libro de Faraway
+
+### 1. (Ejercicio 1 cap. 1 pág. 12)
+*The dataset teengamb concerns a study of teenage gambling in Britain. Make a numerical and
+graphical summary of the data, commenting on any features that you find interesting. Limit the
+output you present to a quantity that a busy reader would find sufficient to get a basic understanding
+of the data.*
+
+```{r}
+# Cargamos los datos teengamb
+data(teengamb)
+
+# Observamos el encabezado
+head(teengamb)
+
+# Extraeremos un resumen estadístico
+summary(teengamb)
+
+# Observamos la estructura
+str(teengamb)
+```
+Las variables obtenidas son extraidos desde:
+https://www.rdocumentation.org/packages/faraway/versions/1.0.9/topics/teengamb
+
+Variables:
+
+* sex: 0 = masculino, 1 = femenino
+* status: estatus socioeconómico en una escala de 0-100
+* income: ingresos semanales en libras esterlinas
+* verbal: puntuación en test verbal (0-20)
+* gamble: gasto anual en juego en libras
+
+```{r}
+# Aplicamos un gráfico de distribución de la variable target
+
+hist(teengamb$gamble, main = "Histograma de gasto en juego", xlab = "Gamble (£)")
+boxplot(gamble ~ sex, data = teengamb, main = "Gasto en juego por sexo")
+
+# Obtenemos las relaciones entre variables
+pairs(teengamb[, -1], col = teengamb$sex + 1, main = "Matriz de dispersión")
+```
+La variable gamble presenta una fuerte asimetría (media 19.3, mediana 6) con valores extremos (máximo 156). Se podría aplicar una transformación logarítmica en fase de modelado.
+
+El resto de observaciones y comentarios:
+- Hay una diferencia entre género: los chicos (sexo=0) gastan más en juego que las chicas (sexo=1).
+- La correlación entre income y gamble parece positiva, aunque con outliers.
+- verbal muestra una relación negativa con el juego (a mayor puntuación verbal, menor gasto).
+
+***
+
+### 2. (Ejercicio 2 pág. 12)
+*The dataset uswages is drawn as a sample from the Current Population Survey in 1988. Make a
+numerical and graphical summary of the data as in the previous question.*
+
+```{r}
+# Cargamos los datos uswages
+data(uswages)
+
+# Observamos los datos
+head(uswages)
+
+# Extraeremos el resumen estadístico
+summary(uswages)
+```
+Las variables obtenidas desde uswages son:
+https://www.rdocumentation.org/packages/faraway/versions/1.0.8/topics/uswages
+
+* wage: Real weekly wages in dollars (deflated by personal consumption expenditures - 1992 base year)
+* educ :Years of education
+* exper: Years of experience
+* race: 1 if Black, 0 if White (other races not in sample)
+* smsa: 1 if living in Standard Metropolitan Statistical Area, 0 if not
+* ne: 1 if living in the North East
+* mw: 1 if living in the Midwest
+* we: 1 if living in the West
+* so: 1 if living in the South
+* pt: 1 if working part time, 0 if not
+
+
+```{r}
+# Distribución del salario
+hist(uswages$wage, breaks = 30, main = "Salario por hora", xlab = "wage ($)")
+
+# Mostramos el salario según raza y área metropolitana
+boxplot(wage ~ race, data = uswages, main = "Salario por raza")
+boxplot(wage ~ smsa, data = uswages, main = "Salario según área metropolitana")
+
+# Representación de la relación con educación y experiencia
+plot(wage ~ educ, data = uswages, pch = 16, cex = 0.5)
+plot(wage ~ exper, data = uswages, pch = 16, cex = 0.5)
+```
+Las conclusiones que podemos extraer:
+
+* El salario medio es 608.12 USD/h, con una cola derecha (valores altos hasta 7716 $).
+* La mayoría de individuos son de raza blanca (1), y viven en áreas metropolitanas (smsa=1).
+* Se observa una relación positiva entre salario y educación, aunque con mucha variabilidad.
+* La experiencia también muestra una tendencia positiva, pero con una posible forma no lineal (meseta después de cierto tiempo).
+* Diferencias salariales por raza: los blancos tienen salarios ligeramente superiores a los negros (2), aunque con solapamiento.
+
+
+
+***
+
+### 3. (∗) (Ejercicio 3 pág. 12)
+*The dataset prostate is from a study on 97 men with prostate cancer who were due to receive a
+radical prostatectomy. Make a numerical and graphical summary of the data as in the first question.*
+
+```{r}
+# Cargamos los datos
+data(prostate)
+
+# Mostramos el encabezado
+head(prostate)
+
+# Extraeremos los valores estadísticos
+summary(prostate)
+```
+
+Las variables obtenidas son:
+https://www.rdocumentation.org/packages/faraway/versions/1.0.8/topics/prostate
+
+lcavol
+
+    log(cancer volume)
+lweight
+
+    log(prostate weight)
+
+age
+
+    age
+lbph
+
+    log(benign prostatic hyperplasia amount)
+svi
+
+    seminal vesicle invasion
+
+lcp
+
+    log(capsular penetration)
+gleason
+
+    Gleason score
+pgg45
+
+    percentage Gleason scores 4 or 5
+
+lpsa
+
+    log(prostate specific antigen)
+
+
+```{r}
+# Obtenemos la matriz de correlación
+pairs(prostate[, c("lcavol", "lweight", "age", "lpsa")], main = "Relaciones principales")
+
+# Distribución de la respuesta
+hist(prostate$lpsa, main = "log(PSA)")
+
+# Boxplot de lpsa según svi (invasión)
+boxplot(lpsa ~ svi, data = prostate, main = "PSA según invasión")
+```
+Aquí unas cuantas observaciones obtenidas:
+
+* La variable respuesta lpsa (log del PSA) tiene una distribución aproximadamente normal.
+* Existe una correlación positiva fuerte entre lcavol (log volumen) y lpsa, también con lcp.
+* La invasión de vesículas seminales (svi) es un factor importante: los pacientes con invasión (svi=1) tienen valores de PSA más altos.
+* gleason y pgg45 miden la agresividad del tumor; se espera que a mayor puntuación, mayor PSA.
+
+***
+
+### 4. (∗) (Ejercicio 4 pág. 12)
+*The dataset sat comes from a study entitled “Getting What You Pay For: The Debate Over Equity
+in Public School Expenditures.” Make a numerical and graphical summary of the data as in the
+first question.*
+
+```{r}
+# Cargamos los datos
+data(sat)
+
+# Una vista previa
+head(sat)
+
+# Mostramos los valores estadísticos
+summary(sat)
+```
+Las variables obtenidas son:
+https://www.rdocumentation.org/packages/faraway/versions/1.0.8/topics/sat
+
+expend
+
+    Current expenditure per pupil in average daily attendance in public elementary and secondary schools, 1994-95 (in thousands of dollars)
+ratio
+
+    Average pupil/teacher ratio in public elementary and secondary schools, Fall 1994
+salary
+
+    Estimated average annual salary of teachers in public elementary and secondary schools, 1994-95 (in thousands of dollars)
+
+takers
+
+    Percentage of all eligible students taking the SAT, 1994-95
+verbal
+
+    Average verbal SAT score, 1994-95
+
+math
+
+    Average math SAT score, 1994-95
+total
+
+    Average total score on the SAT, 1994-95
+
+
+```{r}
+# Graficamos la relación entre gasto y puntuaciones
+plot(total ~ expend, data = sat, main = "SAT total vs. gasto por alumno")
+
+# Añadimos las etiquetas de estados (si se conocen)
+text(sat$expend, sat$total, labels = rownames(sat), cex = 0.6, pos = 4)
+
+# Graficamos la importancia del porcentaje de alumnos que toman el SAT
+plot(total ~ takers, data = sat, main = "SAT total vs. % de participación")
+```
+Alguna de las observaciones :
+
+* La relación entre expend (gasto) y total SAT es débil o incluso ligeramente negativa. Esto se debe a que estados con mayor porcentaje de estudiantes que toman el SAT (como los de la costa este) tienden a tener puntuaciones más bajas, porque incluyen a estudiantes menos selectivos.
+* El gráfico de total vs. takers muestra una fuerte correlación negativa: a mayor participación, menor puntuación media.
+* Es un ejemplo clásico de variable de confusión: el gasto no está directamente relacionado con el rendimiento si no se controla por la tasa de participación.
+* Algunos estados tienen valores extremos (ej. bajo gasto y alta puntuación, como Utah).
+
+
+***
+
+### 5. (∗) (Ejercicio 5 pág. 12)
+*The dataset divusa contains data on divorces in the United States from 1920 to 1996. Make a
+numerical and graphical summary of the data as in the first question.*
+
+```{r}
+# Cargamos los datos
+data(divusa)
+
+# Obtenemos un extracto de los datos
+head(divusa)
+
+# Extraemos los valores estadísticos
+summary(divusa)
+```
+Las variables obtenidas son:
+https://www.rdocumentation.org/packages/faraway/versions/1.0.8/topics/divusa
+
+A data frame with 77 observations on the following 7 variables.
+
+year
+
+    the year from 1920-1996
+divorce
+
+    divorce per 1000 women aged 15 or more
+unemployed
+
+    unemployment rate
+
+femlab
+
+    percent female participation in labor force aged 16+
+
+marriage
+
+    marriages per 1000 unmarried women aged 16+
+
+birth
+
+    births per 1000 women aged 15-44
+military
+
+    military personnel per 1000 population
+
+
+```{r}
+# Graficamos la evolución temporal de la tasa de divorcios
+plot(divorce ~ year, data = divusa, type = "l", main = "Tasa de divorcios en EE.UU.", ylab = "Divorcios por 1000 hab")
+
+# Se añaden otras variables
+lines(unemployed ~ year, data = divusa, col = 2)
+lines(femlab ~ year, data = divusa, col = 3)
+legend("topleft", legend = c("divorce", "unemployed", "femlab"), col = 1:3, lty = 1)
+
+# Obtenemos la matriz de correlación
+pairs(divusa[, -1], main = "Relaciones entre indicadores")
+```
+```{r}
+# 1. Participación femenina en la fuerza laboral (femlab)
+plot(femlab ~ year, data = divusa, type = "l", col = "blue", lwd = 2,
+     main = "Participación femenina en la fuerza laboral",
+     xlab = "Año", ylab = "% mujeres en fuerza laboral")
+
+# 2. Desempleo y divorcios (escalas diferentes, usar dos ejes)
+plot(divorce ~ year, data = divusa, type = "l", col = "red", lwd = 2,
+     main = "Desempleo y divorcios", xlab = "Año", ylab = "Tasa de divorcios (por 1000 hab)")
+par(new = TRUE)
+plot(unemployed ~ year, data = divusa, type = "l", col = "darkgreen", lwd = 2,
+     axes = FALSE, xlab = "", ylab = "")
+axis(side = 4, col = "darkgreen")
+mtext("Tasa de desempleo (%)", side = 4, line = 2, col = "darkgreen")
+legend("topleft", legend = c("Divorcios", "Desempleo"),
+       col = c("red", "darkgreen"), lty = 1, lwd = 2)
+
+# 3. Matrimonios y natalidad
+plot(marriage ~ year, data = divusa, type = "l", col = "purple", lwd = 2,
+     main = "Matrimonios y natalidad", xlab = "Año", ylab = "Tasa de matrimonios (por 1000 hab)")
+par(new = TRUE)
+plot(birth ~ year, data = divusa, type = "l", col = "orange", lwd = 2,
+     axes = FALSE, xlab = "", ylab = "")
+axis(side = 4, col = "orange")
+mtext("Tasa de natalidad (por 1000 hab)", side = 4, line = 2, col = "orange")
+legend("topright", legend = c("Matrimonios", "Natalidad"),
+       col = c("purple", "orange"), lty = 1, lwd = 2)
+```
+
+
+
+Aquí unos comentarios:
+
+* La tasa de divorcios aumentó desde los años 30 hasta principios de los 50 (alrededor de 18), luego disminuyó ligeramente hasta finales de los 60 para aumentar hasta finales de los 70 e inicio 80.
+* Se observa una tendencia similar en la participación femenina en la fuerza laboral (femlab), que crece constantemente.
+* El desempleo tiene picos en las crisis (años 30) y un aumento gradual fine años 70. Sin embargo no muestra una relación directa clara con divorcios.
+* La tasa de matrimonios y natalidad han ido disminuyendo en las últimas décadas. Tiene una relación directa por su interpretación gráfica.
+
+
+\newpage
+
+
+***
+
+## Ejercicios del libro de Carmona
+
+### 1. (∗) (Ejercicio 1.1 del Capítulo 1 página 24
+*Hallar las estimaciones de los parámetros en un modelo de regresión lineal simple, minimizando la
+suma de los cuadrados de los errores y Hallar también una expresión para las predicciones ˆyi y los residuos ei = yi − ˆyi.
+Nota: Este ejercicio está resuelto en el apéndice A del módulo El modelo lineal.*
+
+
+La función a minimizar es:
+
+$$
+S(\beta_0,\beta_1) = \sum_{i=1}^n (y_i - \beta_0 - \beta_1 x_i)^2
+$$
+
+Derivamos parcialmente respecto a \(\beta_0\) y \(\beta_1\) e igualamos a cero:
+
+$$
+\frac{\partial S}{\partial \beta_0} = -2\sum_{i=1}^n (y_i - \beta_0 - \beta_1 x_i) = 0
+$$
+$$
+\frac{\partial S}{\partial \beta_1} = -2\sum_{i=1}^n x_i(y_i - \beta_0 - \beta_1 x_i) = 0
+$$
+
+Simplificando obtenemos las ecuaciones normales:
+
+$$
+\begin{cases}
+n\beta_0 + \beta_1 \sum x_i = \sum y_i \\
+\beta_0 \sum x_i + \beta_1 \sum x_i^2 = \sum x_i y_i
+\end{cases}
+$$
+
+Resolviendo, se obtienen los estimadores mínimo-cuadráticos:
+
+$$
+\hat{\beta}_1 = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sum (x_i - \bar{x})^2} = \frac{s_{xy}}{s_x^2}
+$$
+
+
+$$
+\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}
+$$
+
+donde $(\bar{x} = \frac{1}{n}\sum x_i), (\bar{y} = \frac{1}{n}\sum y_i)$.
+
+Las predicciones son:
+
+$$
+\hat{y}_i = \hat{\beta}_0 + \hat{\beta}_1 x_i = \bar{y} + \hat{\beta}_1 (x_i - \bar{x})
+$$
+
+y los residuos:
+
+$$
+e_i = y_i - \hat{y}_i
+$$
+
+Por lo tanto, se verifica que $(\sum e_i = 0)$ y que los residuos no están correlacionados con los valores de $(x_i)$ por la propiedades algebraicas.
+
+***
+
+### 2. (∗∗) (Ejercicio 1.2 del Capítulo 1 página 24)
+*Hallar las estimaciones de los parámetros en un modelo de regresión parabólico, minimizando la
+suma de los cuadrados de los errores y Hallar también una expresión para las predicciones ˆyi y los residuos ei = yi − ˆyi*
+
+El modelo es $(y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \epsilon_i)$. 
+Definimos las variables $(x_{i1} = x_i), (x_{i2} = x_i^2)$. 
+
+En forma matricial:
+
+$$
+\mathbf{Y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\epsilon},\quad 
+\mathbf{X} = \begin{pmatrix}1 & x_1 & x_1^2 \\ \vdots & \vdots & \vdots \\ 1 & x_n & x_n^2\end{pmatrix},\quad 
+\boldsymbol{\beta} = (\beta_0,\beta_1,\beta_2)'
+$$
+
+Las ecuaciones normales son $(\mathbf{X}'\mathbf{X}\hat{\boldsymbol{\beta}} = \mathbf{X}'\mathbf{Y})$. 
+La solución es:
+
+$$
+\hat{\boldsymbol{\beta}} = (\mathbf{X}'\mathbf{X})^{-1}\mathbf{X}'\mathbf{Y}
+$$
+
+siempre que $(\mathbf{X})$ tenga rango completo (lo cual ocurre si los $(x_i)$ no son todos iguales y hay al menos tres valores distintos).
+Las predicciones son $(\hat{\mathbf{Y}} = \mathbf{X}\hat{\boldsymbol{\beta}})$ y los residuos $(\mathbf{e} = \mathbf{Y} - \hat{\mathbf{Y}})$.
+
+En componentes, el sistema normal es:
+
+$$
+\begin{cases}
+n\hat{\beta}_0 + \hat{\beta}_1\sum x_i + \hat{\beta}_2\sum x_i^2 = \sum y_i \\
+\hat{\beta}_0\sum x_i + \hat{\beta}_1\sum x_i^2 + \hat{\beta}_2\sum x_i^3 = \sum x_i y_i \\
+\hat{\beta}_0\sum x_i^2 + \hat{\beta}_1\sum x_i^3 + \hat{\beta}_2\sum x_i^4 = \sum x_i^2 y_i
+\end{cases}
+$$
+
+Por lo tanto no se obtiene una expresión cerrada tan simple como en el caso lineal, pero se resuelve numéricamente con los datos.
+
+***
+
+### 3. (Ejercicio 1.3 del Capítulo 1 página 24
+*Consideremos el problema de tráfico planteado en el apartado 1.2 de este capítulo, con la variable
+independiente densidad y la variable dependiente raíz cuadrada de la velocidad. Con los datos
+proporcionados en la tabla 1.1*
+
+```{r}
+# Cargamos los datos que nos vienen indicados
+
+dens <- c(12.7, 17.0, 66.0, 50.0, 87.8, 81.4, 75.6, 66.2, 81.1, 62.8,
+          77.0, 89.6, 18.3, 19.1, 16.5, 22.2, 18.6, 66.0, 60.3, 56.0,
+          66.3, 61.7, 66.6, 67.8)
+vel <- c(62.4, 50.7, 17.1, 25.9, 12.4, 13.4, 13.7, 17.9, 13.8, 17.9,
+         15.8, 12.6, 51.2, 50.8, 54.7, 46.5, 46.3, 16.9, 19.8, 21.2,
+         18.3, 18.0, 16.6, 18.3)
+rvel <- sqrt(vel)
+```
+
+
+#### a)
+
+Los puntos: \((12.7, \sqrt{62.4})\) y \((87.8, \sqrt{12.4})\). Calculamos:
+
+```{r}
+x1 <- 12.7
+y1 <- sqrt(62.4)
+x2 <- 87.8
+y2 <- sqrt(12.4)
+
+pend <- (y2 - y1) / (x2 - x1)
+inter <- y1 - pend * x1
+
+cat("Recta: y =", inter, "+", pend, "* x\n")
+```
+
+Obtenemos aproximadamente: intercepto = 8.6397, pendiente = -0.0583.
+
+Creamos el gráfico de dispersión y recta:
+
+```{r}
+plot(dens, rvel, pch=19, col="blue", xlab="Densidad", ylab="Raíz(velocidad)")
+abline(a=inter, b=pend, col="red", lwd=2)
+```
+
+Calcularemos la suma de los residuos y suma de cuadrados:
+
+```{r}
+pred_recta <- inter + pend * dens
+res_recta <- rvel - pred_recta
+SCR_recta <- sum(res_recta^2)
+cat("SCR recta inicial:", SCR_recta, "\n")
+```
+
+Gráficaremos los residuos:
+
+```{r}
+par(mfrow=c(1,2))
+plot(dens, res_recta, main="Residuos vs densidad", ylab="residuos")
+abline(h=0, col="gray")
+plot(pred_recta, res_recta, main="Residuos vs predicciones", xlab="predicción")
+abline(h=0, col="gray")
+```
+
+El resultados obtenido de la suma de los cuadrados de los residuos es $\approx$ 6.689836 
+
+#### (b) 
+
+Hallamos la recta de regresión simple (mínimos cuadrados)
+
+```{r}
+modelo_lineal <- lm(rvel ~ dens)
+summary(modelo_lineal)
+coef(modelo_lineal)
+pred_lineal <- fitted(modelo_lineal)
+res_lineal <- resid(modelo_lineal)
+SCR_lineal <- sum(res_lineal^2)
+cat("SCR regresión lineal:", SCR_lineal, "\n")
+```
+
+Los coeficientes son: $(\hat{\beta}_0 \approx 8.0898)$, $(\hat{\beta}_1 \approx -0.05663)$. SCR ≈ 1.591.
+
+Para representar los gráficos de residuos, vamos a tener algo similar al punto anterior.
+
+```{r}
+# Configuramos para dos gráficos en una fila
+par(mfrow = c(1, 2))
+
+# Gráfico de residuos vs densidad
+plot(dens, res_lineal, 
+     main = "Residuos vs Densidad (lineal)",
+     xlab = "Densidad", ylab = "Residuos",
+     pch = 19, col = "blue")
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+# Gráfico de residuos vs predicciones
+plot(pred_lineal, res_lineal,
+     main = "Residuos vs Predicciones (lineal)",
+     xlab = "Predicciones", ylab = "Residuos",
+     pch = 19, col = "blue")
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+par(mfrow = c(1, 1))
+```
+
+#### (c) 
+
+Mejoramos el modelo anterior utilizando una Regresión parabólica
+
+```{r}
+modelo_parab <- lm(rvel ~ dens + I(dens^2))
+summary(modelo_parab)
+pred_parab <- fitted(modelo_parab)
+res_parab <- resid(modelo_parab)
+SCR_parab <- sum(res_parab^2)
+cat("SCR regresión parabólica:", SCR_parab, "\n")
+```
+
+Coeficientes: $(\hat{\beta}_0 \approx 8.8814)$, $(\hat{\beta}_1 \approx -0.1035)$, $(\hat{\beta}_2 \approx 0.0004893)$. 
+La suma de los cuadrados de los residuos es SCR ≈ 0.353, claramente menor que el lineal.
+
+Mostramos gráficamente los residuos
+
+
+```{r}
+# Configuramos para dos gráficos en una fila
+par(mfrow = c(1, 2))
+
+# Gráfico de residuos vs densidad
+plot(dens, res_lineal, 
+     main = "Residuos vs Densidad (lineal)",
+     xlab = "Densidad", ylab = "Residuos",
+     pch = 19, col = "blue")
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+# Gráfico de residuos vs predicciones
+plot(pred_parab, res_parab,
+     main = "Residuos vs Predicciones (parabólica)",
+     xlab = "Predicciones", ylab = "Residuos",
+     pch = 19, col = "blue")
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+par(mfrow = c(1, 1))
+```
+
+#### (d) 
+
+Calculamos la capacidad de la carretera (máximo flujo)
+
+El flujo es $(F = \text{velocidad} \times \text{densidad} = (\text{raíz(vel)})^2 \times \text{dens})$. 
+
+Usamos el modelo parabólico para predecir raíz(vel) en función de densidad:
+
+$$
+\hat{r} = \hat{\beta}_0 + \hat{\beta}_1 d + \hat{\beta}_2 d^2
+$$
+
+Luego $(\hat{v} = \hat{r}^2)$ y $(\hat{F} = \hat{v} \cdot d = d \cdot (\hat{\beta}_0 + \hat{\beta}_1 d + \hat{\beta}_2 d^2)^2)$.
+
+Para hallar el máximo, podemos derivar numéricamente o evaluar en un rango.
+
+```{r}
+f_flujo <- function(d) {
+  r <- coef(modelo_parab)[1] + coef(modelo_parab)[2]*d + coef(modelo_parab)[3]*d^2
+  v <- r^2
+  return(v * d)
+}
+d_vals <- seq(min(dens), max(dens), length=200)
+flujo_vals <- sapply(d_vals, f_flujo)
+d_opt <- d_vals[which.max(flujo_vals)]
+cap_max <- max(flujo_vals)
+cat("Densidad óptima:", d_opt, "veh/km\n")
+cat("Capacidad máxima:", cap_max, "veh/h (si velocidad en km/h, flujo en veh/h por carril)\n")
+```
+
+Resultado aproximado: densidad óptima alrededor de 44 veh/km y flujo máximo cercano a 1224 veh/h.
+
+
+
+
+***
+
+### 4. (Ejercicio 1.4 del Capítulo 1 página 24)
+
+Tenemos la siguiente tabla de los mejores tiempos conseguidos en las pruebas de velocidad de las Olimpiades de Atlanda 1996.
+
+```{r}
+dist <- c(100, 200, 400, 800, 1500, 5000, 10000, 42192)
+hombres <- c(9.84, 19.32, 43.19, 102.58, 215.78, 787.96, 1627.34, 7956.00)
+mujeres <- c(10.94, 22.12, 48.25, 117.73, 240.83, 899.88, 1861.63, 8765.00)
+```
+
+Si tomamos como variable regresora o independiente la distancia (metros) y como variable respuesta
+o dependiente el tiempo (segundos):
+
+#### (a) Regresión simple con datos hombres
+
+```{r}
+modelo_h <- lm(hombres ~ dist)
+summary(modelo_h)
+pred_h <- fitted(modelo_h)
+res_h <- resid(modelo_h)
+SCR_h <- sum(res_h^2)
+R2_h <- summary(modelo_h)$r.squared
+cat("SCR hombres:", SCR_h, "\nR^2:", R2_h, "\n")
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+plot(dist, hombres, main="Hombres: tiempo vs distancia")
+abline(modelo_h, col="red")
+plot(dist, res_h, main="Residuos vs distancia")
+abline(h=0, col="gray")
+plot(pred_h, res_h, main="Residuos vs predicciones")
+abline(h=0, col="gray")
+```
+
+El R^2 es muy cercano a 1 (99.89%), por lo tanto el modelo lineal explica casi toda la variabilidad de los tiempos de los hombres en función de la distancia. El estadístico FF es grande (5663) y su p-valor es prácticamente cero, confirmando que la relación es estadísticamente significativa.
+
+
+#### b. Regresión con logaritmos (hombres)
+
+```{r}
+log_dist <- log(dist)
+log_h <- log(hombres)
+modelo_log_h <- lm(log_h ~ log_dist)
+summary(modelo_log_h)
+pred_log_h <- fitted(modelo_log_h)
+res_log_h <- resid(modelo_log_h)
+SCR_log_h <- sum(res_log_h^2)
+R2_log_h <- summary(modelo_log_h)$r.squared
+cat("SCR log hombres:", SCR_log_h, "\nR^2:", R2_log_h, "\n")
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(log_dist, hombres, main="Hombres: tiempo vs distancia")
+abline(modelo_h, col="red")
+plot(log_dist, res_log_h, main="Residuos vs distancia")
+abline(h=0, col="gray")
+plot(pred_log_h, res_log_h, main="Residuos vs predicciones")
+abline(h=0, col="gray")
+```
+A pesar del alto R^2, es preferible utilizar una transformación logarítmica, que suele ajustar mejor este tipo de datos (relación potencial entre tiempo y distancia) y proporciona residuos más homogéneos y coeficientes interpretables.
+
+
+#### (c) Repetiremos con los datos para mujeres
+ 
+```{r}
+modelo_m <- lm(mujeres ~ dist)
+summary(modelo_m)
+pred_m <- fitted(modelo_m)
+res_m <- resid(modelo_m)
+SCR_m <- sum(res_m^2)
+R2_m <- summary(modelo_m)$r.squared
+cat("SCR mujeres:", SCR_m, "\nR^2:", R2_m, "\n")
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(dist, mujeres, main="Mujeres: tiempo vs distancia")
+abline(modelo_m, col="red")
+plot(dist, res_m, main="Residuos vs distancia")
+abline(h=0, col="gray")
+plot(pred_m, res_m, main="Residuos vs predicciones")
+abline(h=0, col="gray")
+```
+
+Encontraremos el mismo problema encontrado con los datos de hombres. Seguramente el F-estadístico será mejor utilizando la transformación logarítmica
+
+```{r}
+log_dist <- log(dist)
+log_m <- log(mujeres)
+modelo_log_m <- lm(log_m ~ log_dist)
+summary(modelo_log_m)
+pred_log_m <- fitted(modelo_log_m)
+res_log_m <- resid(modelo_log_m)
+SCR_log_m <- sum(res_log_m^2)
+R2_log_m <- summary(modelo_log_m)$r.squared
+cat("SCR log mujeres:", SCR_log_m, "\nR^2:", R2_log_m, "\n")
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+plot(log_dist, mujeres, main="Mujeres: tiempo vs distancia")
+abline(modelo_m, col="red")
+plot(log_dist, res_log_m, main="Residuos vs distancia")
+abline(h=0, col="gray")
+plot(pred_log_m, res_log_m, main="Residuos vs predicciones")
+abline(h=0, col="gray")
+```
+
+
+***
+
+BIBLIOGRAFIA
+
+Materiales complementarios
+
+Faraway, Julian J., Linear Models with R, CRC Press, 2014.
+        1. Introduction (completo)
+
+Carmona, Francesc, Modelos lineales, Publicaciones UB, 2004.
+        1. Las condiciones (1.1 - 1.7)
+
+ML [Pages 1 - 57].pdf Descargar ML [Pages 1 - 57].pdf
+
+Curso "Regression Methods" de la Penn-State University
+Lesson 1: Simple Linear Regression (excepto 1.9)
+https://online.stat.psu.edu/stat501/lesson/1Links to an external site.
+
+Quick-R (Fitting the Model)
+https://www.statmethods.net/stats/regression.htmlLinks to an external site. 
+
+

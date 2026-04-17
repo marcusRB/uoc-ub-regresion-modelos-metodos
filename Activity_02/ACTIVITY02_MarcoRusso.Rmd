@@ -1,0 +1,915 @@
+---
+title: 'Activity02: Estimación del modelo lineal'
+author: "Marco Russo"
+date: "`r format(Sys.Date(), '%B, %Y')`"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+    keep_tex: false
+    latex_engine: xelatex
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+header-includes:
+- \usepackage{xcolor}
+- \usepackage{framed}
+- \usepackage{listings}
+- \usepackage{fancyhdr}
+- \usepackage{geometry}
+- \usepackage{caption}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{graphicx}
+- \geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+- \pagestyle{fancy}
+- \fancyhead[R]{Marco Russo}
+- \fancyfoot[C]{\thepage}
+- \renewcommand{\headrulewidth}{0.4pt}
+- \renewcommand{\footrulewidth}{0.4pt}
+params:
+  author: MarcusRB
+  email: mrussorb@uoc.edu
+  github: 
+  linkedin: https://www.linkedin.com/in/marcusrb/
+---
+
+\newpage
+
+# Información del Estudiante
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Nombre} & Marco Russo \\
+\hline
+\textbf{Email} & mrussorb@uoc.edu \\
+\hline
+\textbf{GitHub} &  \\
+\hline
+\textbf{LinkedIn} & https://www.linkedin.com/in/marcusrb/ \\
+\hline
+\textbf{Fecha} & \today \\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,           # Mostrar código
+  warning = FALSE,       # No mostrar warnings
+  message = FALSE,       # No mostrar mensajes
+  fig.align = 'center',  # Centrar figuras
+  fig.width = 8,         # Ancho de figuras
+  fig.height = 5,        # Alto de figuras
+  out.width = '80%',     # Tamaño de salida
+  cache = FALSE,         # No cachear resultados
+  tidy = TRUE,           # Formatear código
+  tidy.opts = list(width.cutoff = 60)
+)
+```
+
+# Ejercicios del libro de Faraway
+
+## **Ejercicio 1**
+
+El modelo del dataset `teengamb` es dado de: `gamble ~ sex + status + income + verbal`
+
+```{r}
+library(faraway)
+data(teengamb)
+mod <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
+summary(mod)
+```
+
+**a) Porcentaje de variación explicado:**  
+El R² = 0.5267, es decir, el **52.67%** de la variación en el gasto en apuestas es explicado por las variables predictoras.
+
+**b) Observación con mayor residuo positivo:**  
+Calculamos los residuos y buscamos el máximo positivo.
+
+```{r}
+res <- residuals(mod)
+which.max(res)
+```
+
+El valor obtenido es dada de la observación 24.
+
+**c) Media y mediana de los residuos:**  
+Normalmente la media de los residuos en una regresión con intercepto es cero. 
+Lo mismo ocurre con la mediana suele ser cercana a cero.
+
+```{r}
+mean(res)
+median(res)
+```
+
+**d) Correlación entre residuos y valores ajustados:**  
+Por la regla de los mínimo cuadrado debe ser prácticamente cero
+
+```{r}
+cor(res, fitted(mod))
+```
+
+**e) Correlación entre residuos e income:**  
+También debe ser cero por la ortogonalidad entre residuos y cada predictor.
+
+```{r}
+cor(res, teengamb$income)   # ≈ 0
+```
+
+**f) Diferencia predicha entre hombre y mujer:**  
+La variable `sex` está codificada como 0 = hombre, 1 = mujer (según la descripción original https://www.rdocumentation.org/packages/faraway/versions/1.0.9/topics/teengamb). El coeficiente estimado para `sex` es **-22.11833**, lo que significa que, manteniendo constantes las demás variables, una mujer gasta en promedio más o menos **22 unidades menos** que un hombre. En caso contrario tendríamos un valor positivo (a favor del genéro masculino)
+
+\newpage
+
+***
+
+## **Ejercicio 2**
+
+Calcularemos el **modelo lineal con `wage` como respuesta**
+
+```{r}
+data(uswages)
+mod1 <- lm(wage ~ educ + exper, data = uswages)
+summary(mod1)
+```
+
+El coeficiente para `educ` (años de educación) es alrededor de **51.18**, es decir, por cada año adicional de educación, el salario semanal aumenta en promedio **51.18 dólares**, manteniendo constante la experiencia.
+
+***
+
+Ahora calcularemos el **modelo con logaritmo de salario**
+
+```{r}
+mod2 <- lm(log(wage) ~ educ + exper, data = uswages)
+summary(mod2)
+```
+
+El coeficiente para `educ` ahora es aproximadamente **0.09**, es decir un año más de educación aumenta el salario en un **9%** en promedio, manteniendo constante la experiencia.
+
+A la pregunta **¿cuál interpretación es más natural?** la interpretación multiplicativa en escala logarítmica suele ser más natural para variables económicas como salarios, ya que los incrementos porcentuales son más intuitivos que los aumentos absolutos en dólares, especialmente cuando los salarios varían mucho entre individuos.
+
+\newpage
+
+***
+
+## **Ejercicio 3 – Comparación de métodos de cálculo**
+
+Generamos datos y ajustamos polinomios de grado creciente.
+
+```{r}
+set.seed(123)
+x <- 1:20
+y <- x + rnorm(20)
+
+# Crearemos la función para calcular beta por método directo (X'X)^{-1} X'y
+direct_lm <- function(formula, data) {
+  X <- model.matrix(formula, data)
+  beta <- solve(t(X) %*% X) %*% t(X) %*% data$y
+  return(beta)
+}
+
+#  Utilizamos try..cath para evitar de no ejecutarse correctamente
+for (d in 1:10) {
+  f <- as.formula(paste("y ~ poly(x,", d, ", raw=TRUE)"))
+  mod <- lm(f, data.frame(x = x, y = y))
+  beta_lm <- coef(mod)
+  
+  # Intentar método directo con captura de error
+  beta_direct <- tryCatch({
+    direct_lm(f, data.frame(x = x, y = y))
+  }, error = function(e) {
+    cat("Grado", d, ": método directo falla -", e$message, "\n")
+    return(NA)
+  })
+  
+  if (!any(is.na(beta_direct))) {
+    diff_max <- max(abs(beta_lm - beta_direct))
+    cat("Grado", d, "diferencia máxima:", diff_max, "\n")
+  }
+}
+```
+El método directo falla a partir de grado 6 en este caso particular. El motivo es que el cálculo directo deja de ser fiable produciendo este error para grados iguales o superiores a 6.
+
+
+**¿Cuándo falla el método directo?**  
+A medida que aumenta el grado del polinomio, la matriz $X^T X$ se vuelve casi singular (multicolinealidad) y el cálculo de su inversa es numéricamente inestable. Tal como observamos anteriormente, el método falla a partir de grado 6.
+
+***
+
+\newpage
+
+### **Ejercicio 4 – Datos `prostate`**
+
+```{r}
+data(prostate)
+# Modelo base con lcavol
+mod0 <- lm(lpsa ~ lcavol, data = prostate)
+rse0 <- summary(mod0)$sigma
+r20 <- summary(mod0)$r.squared
+
+# Lista de predictores a añadir uno a uno
+predictores <- c("lweight", "svi", "lbph", "age", "lcp", "pgg45", "gleason")
+rse <- numeric(length(predictores) + 1)
+r2 <- numeric(length(predictores) + 1)
+rse[1] <- rse0
+r2[1] <- r20
+
+formula_actual <- lpsa ~ lcavol
+for (i in seq_along(predictores)) {
+  formula_actual <- update(formula_actual, paste(". ~ . +", predictores[i]))
+  mod <- lm(formula_actual, data = prostate)
+  rse[i+1] <- summary(mod)$sigma
+  r2[i+1] <- summary(mod)$r.squared
+}
+
+# Resultados aproximados
+df_ex3 <- data.frame(variable = c("lcavol", predictores), rse, r2)
+df_ex3
+```
+
+Observamos las **tendencias**  
+- El R² aumenta monótonamente a medida que se añaden predictores, de hecho observamos que nunca disminuye.  
+- El error estándar residual (RSE) tiende a disminuir, pero puede aumentar ligeramente en caso que el predictor añadido no aporta información y se penaliza el incremento de parámetros.  
+
+
+```{r}
+par(mfrow = c(1, 2))
+
+# Gráfico de RSE
+plot(1:8, rse, type = "b", pch = 19, col = "blue",
+     xlab = "Número de predictores", ylab = "RSE",
+     main = "Evolución del error estándar residual")
+
+# Gráfico de R²
+plot(1:8, r2, type = "b", pch = 19, col = "red",
+     xlab = "Número de predictores", ylab = "R²",
+     main = "Evolución del R²")
+
+par(mfrow = c(1, 1))
+```
+- Gráficamente se observa que la mejora más importante ocurre al incluir `lweight` y `svi`.
+
+\newpage
+
+***
+
+### **Ejercicio 5**
+
+Siguiendo el ejemplo del dataset `prostate` aplicamos la regresión de `lpsa` sobre `lcavol` y viceversa
+
+Para poder modelarlo seguimos los siguientes pasos:
+
+- Intersección, resolvemos las dos ecuaciones
+- lpsa = $a + b*lcavol$
+- lcavol = $c + d*lpsa  => lpsa = (lcavol - c)/d$
+
+Al igualarlo tenemos :$a + b*lcavol = (lcavol - c)/d$ => despejar lcavol
+Obteniendo lcavol = $(a*d + c) / (1 - b*d)$
+Finalmente se sustituye.
+
+```{r}
+plot(lpsa ~ lcavol, data = prostate)
+mod1 <- lm(lpsa ~ lcavol, data = prostate)
+mod2 <- lm(lcavol ~ lpsa, data = prostate)
+abline(mod1, col = "blue")
+abline(mod2, col = "red")
+
+a <- coef(mod1)[1]; b <- coef(mod1)[2]
+c <- coef(mod2)[1]; d <- coef(mod2)[2]
+lcavol_int <- (a*d + c) / (1 - b*d)
+lpsa_int <- a + b * lcavol_int
+points(lcavol_int, lpsa_int, pch = 19, cex = 2)
+```
+
+Las dos rectas se cortan en el punto que satisface ambas ecuaciones donde típicamente ese punto está cerca de las medias muestrales.
+
+\newpage
+
+***
+
+## **Ejercicio 6 – Datos `cheddar`**
+
+**a) Modelo con intercepto**
+
+```{r}
+data(cheddar)
+mod <- lm(taste ~ Acetic + H2S + Lactic, data = cheddar)
+coef(mod)
+```
+
+```{r}
+summary(mod)
+```
+
+
+
+**b) Correlación entre valores ajustados y respuesta**
+
+```{r}
+cor(fitted(mod), cheddar$taste)^2
+```
+
+Obtenemos el mismo valor $R^2$ del `summary` del modelo.
+
+**c) Modelo sin intercepto**
+
+```{r}
+mod0 <- lm(taste ~ Acetic + H2S + Lactic - 1, data = cheddar)
+summary(mod0)$r.squared
+```
+
+El $R^2$ reportado en modelos sin intercepto se calcula respecto a la suma total sin corregir por la media, lo que puede dar valores engañosos, que normalmente son altos. De hecho tenemos un valor 0.8877 respecto al anterior con intercepto de 0.6517.
+Para poder obtener una medida más razonable es la correlación al cuadrado entre valores observados y ajustados.
+
+```{r}
+cor(cheddar$taste, fitted(mod0))^2
+```
+
+Más o menos obtenemos un valor muy cercano: 0.6244 respecto al anterior de 0.6517
+
+**d) Coeficientes vía descomposición QR**
+
+```{r}
+X <- model.matrix(taste ~ Acetic + H2S + Lactic, data = cheddar)
+y <- cheddar$taste
+qrX <- qr(X)
+beta_qr <- qr.coef(qrX, y)
+beta_qr
+```
+
+Los valores de los coeficientes obtenidos son uguales a los anteriores del primer punto.
+
+\newpage
+
+***
+
+## **Ejercicio 7 – Datos `wafer`**
+
+**a) Mostrando la X matrix**
+
+```{r}
+data(wafer)
+mod <- lm(resist ~ x1 + x2 + x3 + x4, data = wafer)
+X <- model.matrix(mod)
+head(X)
+```
+La codificación de los factores (- y +) se transforma en una variable indicadora. Normalmente R asigna 0 a "-" y 1 a "+" (por orden alfabético). En `model.matrix` se ve una columna de 1 para el intercepto y luego columnas con valores 0/1.
+
+**b) Correlación en X**
+
+```{r}
+# Excluyendo la columna del intercepto
+cor(X[, -1])
+```
+Del resultado obtenido la correlación entre ellas será cero o casi.
+
+**c) Diferencia al cambiar x1 de bajo a alto**  
+Es el coeficiente de `x1` en el modelo, que indica el cambio medio en resistividad cuando x1 pasa de su nivel bajo (0) a alto (1), manteniendo los demás factores constantes. Por ejemplo, si el coeficiente es 10, la resistividad aumenta en 10 unidades.
+
+**d) Modelo sin x4**
+
+```{r}
+mod2 <- lm(resist ~ x1 + x2 + x3, data = wafer)
+summary(mod2)
+```
+
+Los coeficientes de x1, x2, x3 pueden cambiar ligeramente respecto al modelo con x4, pero sus errores estándar también se modifican. Si el diseño es ortogona, es decir balanceado, los coeficientes no cambian; si no lo es, cambian porque la correlación entre x4 y los otros afecta las estimaciones.
+
+**e) Relación con la matriz de correlación**  
+La inclusión o exclusión de una variable correlacionada con las demás altera las estimaciones de los coeficientes. La magnitud del cambio está relacionada con la correlación entre los predictores: a mayor correlación, mayor cambio al eliminar una variable.
+
+\newpage
+
+***
+
+### **Ejercicio 8 – Datos `truck`**
+
+**a) Modelo con cinco factores codificados como -1 y 1**
+
+```{r}
+data(truck)
+
+truck$B <- ifelse(truck$B == "-", -1, 1)
+truck$C <- ifelse(truck$C == "-", -1, 1)
+truck$D <- ifelse(truck$D == "-", -1, 1)
+truck$E <- ifelse(truck$E == "-", -1, 1)
+truck$O <- ifelse(truck$O == "-", -1, 1)
+mod_full <- lm(height ~ B + C + D + E + O, data = truck)
+coef(mod_full)
+```
+
+**b) Modelo sin O**
+
+```{r}
+mod_reduced <- lm(height ~ B + C + D + E, data = truck)
+coef(mod_reduced)
+```
+
+Los coeficientes de B, C, D, E en el modelo reducido son los mismos que en el modelo completo si el diseño es ortogonal, lo que suele ocurrir en estos experimentos factoriales. Digamos que podemos observamos si examinamos la matriz X, si las columnas son ortogonales entre sí, la inclusión o exclusión de una variable no afecta a las demás.
+
+**c) Nuevo predictor A = B + C + D + E**
+
+```{r}
+truck$A <- with(truck, B + C + D + E)
+modA <- lm(height ~ A + B + C + D + E + O, data = truck)
+summary(modA)
+```
+
+No aparecen coeficientes para todos los seis predictores porque existe una combinación lineal exacta entre ellos (A es suma de B, C, D, E), lo que produce singularidad. R eliminará automáticamente uno de ellos, en este apartado sería la variable E para evitar la multicolinealidad.
+
+**d) Calcular$\hat{b}$con (X'X)^{-1}X'y**
+
+```{r eval=FALSE, include=FALSE}
+y <- truck$height
+XtX <- t(X) %*% X
+solve(XtX) %*% t(X) %*% y
+```
+
+Devuelve este error
+
+> Error in solve.default(XtX) : 
+  Lapack routine dgesv: system is exactly singular: U[6,6] = 0
+
+El motivo por el cuál falla, es porque la matriz $X^T X$ es singular (rango < número de columnas), es decir debido a la dependencia lineal perfecta entre las columnas de $(X)$ que es la relación $(A = B + C + D + E)$.
+Buscando mayores informaciones respecto al error del mensaje, `Lapack` indica que durante la descomposición LU, el sexto pivote es cero, confirmando la singularidad exacta. Por tanto, no es posible calcular la inversa y el método directo falla.
+
+**e) Descomposición QR**
+
+```{r}
+X <- model.matrix(mod_full)
+y <- truck$height
+
+# Descomposición QR con pivoteo
+qrX <- qr(X)                
+
+# Matriz Q (solo las primeras p columnas)
+Q <- qr.Q(qrX)              
+
+# Matriz R (completa, p x p)
+R <- qr.R(qrX)             
+
+# f = Q^T y
+f <- t(Q) %*% y             
+
+# Resolviendo R * beta = f
+beta_qr <- try(backsolve(R, f), silent = TRUE)
+print(beta_qr)
+```
+En este caso, la descomposición QR gestiona la singularidad devolviendo coeficientes para un conjunto máximo de columnas linealmente independientes.
+
+**f) Uso de `qr.coef`**
+
+```{r}
+beta_qr_coef <- qr.coef(qrX, y)
+print(beta_qr_coef)
+```
+
+Esta función es la más directa y habitual. De hecho devuelve los coeficientes, y en caso de tener NA para aquellos parámetros que no son estimables debido a la singularidad.
+
+\newpage
+
+***
+
+# Ejercicios del libro de Carmona
+
+## **Ejercicio 1**  
+
+Para poder contestar al primer ejercicio de los siguientes **modelos lineales:**
+
+Creamos las tres funciones
+
+a) $y_i = \beta_0 + \beta_1 x_i + \beta_2 (x_i^2 - 1) + \epsilon_i$ → **Lineal**  
+b) $y_i = \beta_0 + \beta_1 x_i + \beta_2 e^{x_i} + \epsilon_i$ → **Lineal**  
+c) $y_i = \beta_1 x_i (\beta_2 \tan(g(x_i))) + \epsilon_i$ → **No lineal**
+
+
+Los modelos **a** y **b** son lineales porque la salida $y_i$ se expresa como una combinación lineal de los parámetros $\beta_0, \beta_1, \beta_2$ con coeficientes que dependen únicamente de los valores conocidos de $x_i$ como $1$,$x_i$ , $x_i^2-1$ o $e^{x_i}$. Esto cumple la definición de modelo lineal: la relación es lineal en los parámetros, aunque los predictores puedan estar transformados.
+
+En cambio, para el siguiente modelo **c** no es lineal porque contiene un producto de parámetros $\beta_1 \times \beta_2$. Esto hace que los parámetros no aparezcan de forma aditiva ni lineal; no puede escribirse como una combinación lineal de $\beta_1$ y $\beta_2$ con coeficientes conocidos. Aunque se pudiera reparametrizar, en su forma original no es lineal en los parámetros.
+
+Finalmente encontramos las posibles **matrices de diseño** para $x_1=1, x_2=2, x_3=3$:  
+
+
+- Modelo a):
+
+$$
+X_a = 
+\begin{pmatrix}
+1 & 1 & 0 \\
+1 & 2 & 3 \\
+1 & 3 & 8
+\end{pmatrix}
+$$
+
+- Modelo b):
+
+$$
+X_b =
+\begin{pmatrix}
+1 & 1 & e \\
+1 & 2 & e^2 \\
+1 & 3 & e^3
+\end{pmatrix}
+$$
+
+***
+\newpage
+
+### **Ejercicio 2**
+
+El **Modelo:** $y = X\beta + \epsilon$ con
+
+$$
+X =
+\begin{pmatrix}
+1 & 1 & 1 & 1 \\
+1 & -1 & 1 & 1 \\
+1 & 0 & 0 & 1 \\
+1 & 0 & 1 & -1 \\
+1 & 0 & 1 & 1 \\
+1 & 1 & -1 & 1
+\end{pmatrix}, \quad
+$$
+
+$$
+y = 
+\begin{pmatrix}
+9.2 \\ 
+8.3 \\ 
+5.4 \\ 
+-1.6 \\
+8.7 \\
+3.5
+\end{pmatrix}
+$$
+
+Resolviendo las ecuaciones normales se obtienen las estimaciones:
+
+Las estimaciones de los parámetros y la varianza del error para el modelo lineal con los datos corregidos son:
+
+
+```{r}
+X <- matrix(c(
+1,1,1,1,
+1,-1,1,1,
+1,0,0,1,
+1,0,0,-1,
+1,0,1,1,
+1,1,-1,1
+), byrow=TRUE, ncol=4)
+
+y <- c(9.2,8.3,5.4,-1.6,8.7,3.5)
+
+beta_hat <- solve(t(X)%*%X)%*%t(X)%*%y
+
+beta_hat
+```
+
+Varianza del error:
+
+```{r}
+res <- y - X%*%beta_hat
+
+sigma2 <- sum(res^2)/(nrow(X)-ncol(X))
+
+sigma2
+```
+
+
+
+\newpage
+
+***
+
+## **Ejercicio 3**
+
+Data la matriz de diseño:  
+$$
+X = \begin{pmatrix}
+1 & 1 & 1 & 1 \\
+1 & 0 & 1 & 0 \\
+1 & 1 & 1 & 0 \\
+1 & 0 & 1 & 1
+\end{pmatrix}
+$$ 
+
+Rango de $X$ es 3. El espacio nulo de $X$ está generado por $(1,0,-1,0)^T$. 
+
+Una función paramétrica $\psi = a_1\beta_1 + a_2\beta_2 + a_3\beta_3 + a_4\beta_4$ es **estimable** si y solo si
+
+$$
+a_1 - a_3 = 0 \quad \text{es decir} \quad a_1 = a_3.
+$$ 
+
+Expresión general: $\psi = a_1(\beta_1+\beta_3) + a_2\beta_2 + a_4\beta_4$.
+
+\newpage
+
+***
+
+## **Ejercicio 4**
+
+Dado el modelo:  
+
+$$
+y_1 = \beta_1 + \beta_2 + \epsilon_1 \\
+y_2 = \beta_1 + \beta_3 + \epsilon_2 \\
+y_3 = \beta_1 + \beta_2 + \epsilon_3
+$$ 
+
+Matriz $X$ de rango 2, espacio nulo generado por $(1,-1,-1)^T$.  
+
+* $\psi = \beta_1 + \beta_2 + \beta_3$ no es estimable pues $a_1 = 1,\ a_2=1,\ a_3=1$ no cumple $a_1 = a_2 + a_3$ (ya que $1 \neq 2$).  
+* Se demuestra que $\psi = a_1\beta_1 + a_2\beta_2 + a_3\beta_3$ es estimable **si y solo si** $a_1 = a_2 + a_3$.
+
+\newpage
+
+****
+
+## **Ejercicio 5**  
+
+Dato este modelo:  
+
+$$
+y_1 = \mu + \alpha_1 + \beta_1 + \epsilon_1 \\
+y_2 = \mu + \alpha_1 + \beta_2 + \epsilon_2 \\
+y_3 = \mu + \alpha_2 + \beta_1 + \epsilon_3 \\
+y_4 = \mu + \alpha_2 + \beta_2 + \epsilon_4 \\
+y_5 = \mu + \alpha_3 + \beta_1 + \epsilon_5 \\
+y_6 = \mu + \alpha_3 + \beta_2 + \epsilon_6
+$$ 
+
+Rango de $X$ es 4. Espacio nulo generado por $v_1 = (-1,1,1,1,0,0) $ y $v_2 = (-1,0,0,0,1,1)$.  
+Una función $\lambda_0\mu + \lambda_1\alpha_1 + \lambda_2\alpha_2 + \lambda_3\alpha_3 + \lambda_4\beta_1 + \lambda_5\beta_2$ es **estimable** si y solo si  
+
+$$
+\lambda_1 + \lambda_2 + \lambda_3 = \lambda_0 \quad \text{y} \quad \lambda_4 + \lambda_5 = \lambda_0.
+$$
+
+Veamos de contestar al resto de apartados:
+
+* (a) Condición anterior.  
+
+* (b) $\alpha_1 + \alpha_2$ no estimable.  
+
+* (c) $\beta_1 - \beta_2$ sí estimable.  
+
+* (d) $\mu + \alpha_1$ no estimable.  
+
+* (e) $6\mu + 2\alpha_1 + 2\alpha_2 + 2\alpha_3 + 3\beta_1 + 3\beta_2$ sí estimable.  
+
+* (f) $\alpha_1 - 2\alpha_2 + \alpha_3$ sí estimable.  
+
+* (g) Covarianza entre $\widehat{\beta_1 - \beta_2}$ y $\widehat{\alpha_1 - \alpha_2}$ es **cero**.  
+
+* (h) Dimensión del espacio paramétrico = 4.  
+
+* (i) El espacio de errores es el complemento ortogonal del espacio columna de $X$, de dimensión 2. Una base puede obtenerse resolviendo $X^T e = 0$.
+
+\newpage
+
+***
+
+## **Ejercicio 6**
+
+Sean $d_{AB}, d_{AC}, d_{BC}$ las distancias entre poblaciones. Las ecuaciones de los recorridos son:  
+
+1.$2d_{AB} + d_{AC} = 533$ 
+2.$2d_{AC} + d_{BC} = 583$ 
+3.$2d_{AB} + 3d_{AC} + d_{BC} = 1111$ 
+4.$4d_{AB} + 2d_{AC} = 1069$
+
+Sea el modelo matricial
+
+$$
+\beta =
+\begin{pmatrix}
+d_{AB} \\ 
+d_{AC} \\
+d_{BC}
+\end{pmatrix}
+$$
+
+y dada $y$:
+
+$$
+y=
+\begin{pmatrix}
+533 \\
+583 \\
+1111 \\
+1069
+\end{pmatrix}
+$$
+
+Entonces
+
+$$
+y = X\beta + \varepsilon
+$$
+
+donde la **matriz de diseño** es
+
+$$
+X=
+\begin{pmatrix}
+2 & 1 & 0 \\
+0 & 2 & 1 \\
+2 & 3 & 2 \\
+4 & 2 & 0
+\end{pmatrix}
+$$
+
+```{r}
+X <- matrix(c(
+2,1,0,
+0,2,1,
+2,3,2,
+4,2,0
+), nrow=4, byrow=TRUE)
+
+y <- c(533,583,1111,1069)
+
+beta_hat <- solve(t(X)%*%X)%*%t(X)%*%y
+beta_hat
+```
+
+Los resultados aproximados obtenidos son:
+
+$$
+\hat{d}_{AB} \approx 195
+$$
+
+
+$$
+\hat{d}_{AC} \approx 143
+$$
+
+
+$$
+\hat{d}_{BC} \approx 297
+$$
+
+A la primera pregunta se pueden estimar las tres distancias, por calcular el rango:
+
+$$
+rank(X)=3
+$$
+
+y hay **3 parámetros**.
+
+```{r}
+qr(X)$rank
+```
+
+Por tanto **todas las distancias son estimables**.
+Como (rank(X)=3), el modelo es **completamente identificable**, por lo que:
+
+* (d_{AB}) estimable
+* (d_{AC}) estimable
+* (d_{BC}) estimable
+
+y cualquier combinación lineal de ellas también.
+
+***
+Respecto al punto (b),  Trayecto con puntos medios, tenemos:
+
+$$
+M_{BC} \to B \to A \to C \to M_{AC}
+$$
+
+donde (M_{IJ}) es el **punto medio entre I y J**.
+
+Observamos las distancias parciales
+
+* (M_{BC} \to B)
+
+$$
+\frac{1}{2}d_{BC}
+$$
+
+* (B \to A)
+
+$$
+d_{AB}
+$$
+
+* (A \to C)
+
+$$
+d_{AC}
+$$
+
+* (C \to M_{AC})
+
+$$
+\frac{1}{2}d_{AC}
+$$
+
+Finalmente por la longitud total
+
+$$
+L = \frac{1}{2}d_{BC} + d_{AB} + \frac{3}{2}d_{AC}
+$$
+
+***
+
+### La estimación
+
+$$
+\hat{L} = \frac{1}{2}\hat d_{BC} + \hat d_{AB} + \frac{3}{2}\hat d_{AC}
+$$
+
+Sustituyendo:
+
+$$
+\hat{L} = 0.5(297) + 195 + 1.5(143)
+$$
+
+$$
+\hat{L} = \approx 148.5 + 195 + 214.5
+$$
+
+$$
+\hat{L} \approx 558 \text{ km}
+$$
+
+***
+
+Confirmamos si es buena estimación. 
+Al parecer sí, porque es **combinación lineal de parámetros estimables**, por lo que su estimador es **insesgado**.
+
+***
+
+### Calculando el Error de la estimación
+
+La varianza es
+
+$$
+Var(\hat L) = c^T (X^TX)^{-1} c \sigma^2
+$$
+
+donde
+
+$$
+c =
+\begin{pmatrix}
+1 \\
+3/2 \\
+1/2
+\end{pmatrix}
+$$
+
+
+Calculando
+
+```{r}
+c <- c(1,1.5,0.5)
+
+sigma2 <- sum((y - X%*%beta_hat)^2)/(4-3)
+
+var_L <- sigma2 * t(c)%*%solve(t(X)%*%X)%*%c
+
+sqrt(var_L)
+```
+
+El resultado de 0.73 es el **error estándar de la estimación**.
+
+
+***
+
+BIBLIOGRAFIA
+
+Materiales complementarios
+
+Faraway, Julian J., Linear Models with R, CRC Press, 2014.
+        2. Estimation (completo)
+
+Carmona, Francesc, Modelos lineales, Publicaciones UB, 2005.
+        2. Estimación (2.1,2.2,2.3,2.4, 2.5, 2.8.2)
+        3. Funciones paramétricas estimables
+(Definición 3.1.1, Teorema 3.1.1, Teorema 3.2.1, Teorema 3.2.2)
+
+Irizarry. Data Analysis For Life Sciences.
+    Capítulo "Linear Models"
+
+Quick-R https://www.statmethods.net/stats/regression.htmlLinks to an external site. (Fitting the Model)
+
+
