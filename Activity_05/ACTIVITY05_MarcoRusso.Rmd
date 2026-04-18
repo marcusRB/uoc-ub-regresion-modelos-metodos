@@ -190,7 +190,7 @@ le razonablemente las hipótesis; no requiere correcciones.
 
 ```{r}
 data(teengamb)
-mod_gamble <- car::lm(gamble ~ sex + status + income + verbal, data = teengamb)
+mod_gamble <- lm(gamble ~ sex + status + income + verbal, data = teengamb)
 summary(mod_gamble)
 ```
 
@@ -243,7 +243,7 @@ No hay distancias de Cook > 1, pero varios puntos tienen valores moderados (> 0.
 ### (f) Estructura
 
 ```{r}
-avPlots(mod_gamble)
+car::avPlots(mod_gamble)
 ```
 
 Los gráficos de variable añadida muestran que `income` tiene una relación no lineal (curvatura). Esto sugiere transformar `income` o añadir términos cuadráticos.
@@ -311,7 +311,7 @@ Ninguna distancia de Cook supera 1. Las mayores son < 0.2.
 ### (f) Estructura
 
 ```{r}
-avPlots(mod_pros)
+car::avPlots(mod_pros)
 ```
 
 Los gráficos de variable añadida muestran relaciones lineales aceptables. La variable `lcp` tiene cierta curvatura pero no es grave.
@@ -379,7 +379,7 @@ Ninguna distancia de Cook supera 1, pero la de Raron es la mayor (≈ 0.5).
 ### (f) Estructura
 
 ```{r}
-avPlots(mod_swiss)
+car::avPlots(mod_swiss)
 ```
 
 Los gráficos muestran relaciones lineales aceptables, excepto quizás para `Catholic` que tiene una nube con dos grupos.
@@ -447,7 +447,7 @@ Todas las distancias de Cook son < 0.2.
 ### (f) Estructura
 
 ```{r}
-avPlots(mod_ched)
+car::avPlots(mod_ched)
 ```
 
 Las relaciones son lineales; no se aprecian curvaturas.
@@ -479,13 +479,13 @@ summary(mod_happy)
 
 ---
 
-## 7. Ejercicio 7 (*) – Tvdactor data
+## 7. Ejercicio 7 (*) – tvdoctor data
 
-**Modelo:** `life ~ tvd + actor`
+**Modelo:** `life ~ tv + doctor`
 
 ```{r}
-data(tvdactor)
-mod_tv <- lm(life ~ tvd + actor, data = tvdactor)
+data(tvdoctor)
+mod_tv <- lm(life ~ tv + doctor, data = tvdoctor)
 summary(mod_tv)
 ```
 
@@ -508,7 +508,7 @@ summary(mod_tv)
 
 ```{r}
 data(divusa)
-mod_div <- lm(divorce ~ unemployed + fembab + marriage + birth + military, data = divusa)
+mod_div <- lm(divorce ~ unemployed + femlab + marriage + birth + military, data = divusa)
 summary(mod_div)
 ```
 
@@ -916,6 +916,207 @@ abline(h = 0, col = "red")
 
 **Feedback solicitado:**  
 Ejecute el código anterior con los datos proporcionados y confirme si los resultados coinciden con los esperados. Si hay discrepancias, indíquelas para ajustar la interpretación.
+
+
+## Revisión de los resultados del trabajo `ACTIVITY05_MarcoRusso.pdf`
+
+A continuación se analizan, ejercicio por ejercicio, las salidas y comentarios presentados en el documento del estudiante. Se indican los **errores** encontrados y, cuando procede, se proporciona la **corrección** necesaria.
+
+---
+
+### Ejercicio 1 – SAT data
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Varianza constante | ✅ Sí | El gráfico y la interpretación son adecuados. |
+| (b) Normalidad | ✅ Sí | QQ-plot y test de Shapiro-Wilk (p=0.4304) correctos. |
+| (c) Puntos de alto nivel | ❌ **Error** | El umbral correcto es \(2(p+1)/n = 2·5/50 = 0.2\), no 0.4. Los puntos `California`, `Connecticut`, `New Jersey` y `Utah` tienen `hii > 0.2`, por lo tanto **sí existen puntos de alto nivel**. El comentario "No hay puntos de alto nivel" es falso. |
+| (d) Outliers | ✅ Correcto | `rstudent` no supera 2 en valor absoluto. |
+| (e) Influencia | ✅ Correcto | Distancias de Cook < 0.2. |
+| (f) Estructura | ✅ Correcto | Gráficos de variable añadida razonables. |
+
+**Corrección necesaria:**  
+- Cambiar el umbral a 0.2 y reconocer que existen 4 observaciones con leverage alto (aunque no necesariamente influyentes).
+
+---
+
+### Ejercicio 2 – Teengamb data
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Varianza constante | ✅ Correcto | Se detecta posible heterocedasticidad. |
+| (b) Normalidad | ✅ Correcto | p-valor 8.16e-5 → no normalidad. |
+| (c) Puntos de alto nivel | ✅ Correcto | Casos 31,33,35,42 con `hii > 0.5`. |
+| (d) Outliers | ✅ Correcto | Casos 24,36,39 con |rstudent|>2. |
+| (e) Influencia | ✅ Correcto | Cook < 1. |
+| (f) Estructura | ✅ Correcto | `income` muestra curvatura. |
+
+Sin errores destacables.
+
+---
+
+### Ejercicio 3 – Prostate data
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Varianza constante | ✅ Correcto | |
+| (b) Normalidad | ✅ Correcto | p=0.7721 → normalidad aceptable. |
+| (c) Puntos de alto nivel | ✅ Correcto | Umbral 0.6, ningún punto lo supera. |
+| (d) Outliers | ✅ Correcto | Ningún |rstudent|>2. |
+| (e) Influencia | ✅ Correcto | Cook < 1. |
+| (f) Estructura | ✅ Correcto | |
+
+Sin errores.
+
+---
+
+### Ejercicio 4 – Swiss data
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Varianza constante | ✅ Correcto | |
+| (b) Normalidad | ❌ **Error** | El test de Shapiro-Wilk da **p‑valor = 0.9318**, no 0.03. El comentario “ligera evidencia contra normalidad” es incorrecto. No hay evidencia contra la normalidad. |
+| (c) Puntos de alto nivel | ✅ Correcto | Umbral 0.43, puntos 19 y 45 (La Vallee, V. De Geneve) lo superan. |
+| (d) Outliers | ✅ Correcto | Casos 6,37,47 con |rstudent|>2. |
+| (e) Influencia | ✅ Correcto | Cook máximo ~0.5. |
+| (f) Estructura | ✅ Correcto | |
+
+**Corrección:**  
+- Indicar que el p-valor es 0.9318, por lo que **no se rechaza la normalidad**.
+
+---
+
+### Ejercicio 5 – Cheddar data
+
+Todo correcto.
+
+---
+
+### Ejercicio 6 – Happy data (opcional)
+
+Sin errores graves. Las conclusiones son razonables.
+
+---
+
+### Ejercicio 7 – tvdoctor data (opcional)
+
+Correcto.
+
+---
+
+### Ejercicio 8 – Divusa data (serial correlation)
+
+Correcto: Durbin-Watson p < 2.2e-16 → autocorrelación significativa.
+
+---
+
+### Ejercicio 9 – Divusa data (multicolinealidad)
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Números de condición | ❌ **Error de interpretación** | `κ = 25.15`. El estudiante dice “indica colinealidad fuerte” y “suele ser elevado (>30)”. En realidad, κ < 30 se considera **multicolinealidad moderada o baja**. Además, comenta que “VIF para fembab y marriage suelen ser >10”, pero los VIF calculados son todos < 4. |
+| (b) VIF | ✅ Correcto en los números | Pero la interpretación es exagerada: no hay evidencia de colinealidad grave. |
+| (c) Eliminación de predictores | ✅ Correcto | El `step` no elimina ninguno (AIC mínimo con todos). |
+
+**Corrección:**  
+- Aclarar que κ = 25.15 indica **multicolinealidad moderada**, no grave.  
+- Los VIF < 4 confirman que la colinealidad no es un problema serio.
+
+---
+
+### Ejercicio 10 – Longley data
+
+Correcto. Número de condición enorme (5751) y VIF altísimos → multicolinealidad extrema.
+
+---
+
+### Ejercicio 11 – Prostate data (multicolinealidad)
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Números de condición | ❌ **Error numérico** | El estudiante escribe “κ = 243.3” y luego comenta “está en el límite (25)”. Es una contradicción. Además, dice “colinealidad moderada”. |
+| (b) Correlaciones | ✅ Correcto | |
+| (c) VIF | ✅ Correcto | Todos < 4, indicando ausencia de colinealidad grave. |
+
+**Corrección:**  
+- El valor de κ es alto (243) debido a diferencias de escala entre predictores. Al estandarizar los datos, κ se reduce. Los VIF bajos son más fiables: **no hay problema de multicolinealidad**.
+
+---
+
+### Ejercicio 12 – Fat data
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| (a) Diagnósticos | ✅ Correcto | κ = 4640, VIF altos → colinealidad grave. |
+| (b) Eliminar casos 39 y 42 | ✅ Correcto | La colinealidad persiste. |
+| (c) Modelo reducido | ✅ Correcto | κ = 23.9, VIF no mostrados pero previsiblemente bajos. |
+| (d) Intervalo mediano | ✅ Correcto | `[7.66, 28.90]` (aproximadamente). |
+| (e) Intervalo (40,200,73) | ✅ Correcto | Más ancho por extrapolación. |
+| (f) Intervalo (40,130,73) | ✅ Correcto | Más estrecho que (e), pero `height=73` es alto (media 68) → extrapolación moderada. |
+
+Todo correcto en este ejercicio.
+
+---
+
+### Ejercicio 9.1 de Carmona – Modelo parabólico con raíz cuadrada
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| Ajuste del modelo | ❌ **Error grave** | La salida mostrada (`R² = 0.993`, `Error estándar = 0.1297`) corresponde en realidad al **modelo parabólico con velocidad original** (véase ejercicio 9.2). Con los datos correctos y `rvel = sqrt(velocidad)`, el modelo parabólico debe dar `R² ≈ 0.9768` y `Residual standard error ≈ 0.2378`. |
+| Análisis de residuos | ❌ **Inconsistente** | Los gráficos y comentarios se basan en el modelo erróneo. |
+| Comparación con lineal simple | ✅ Válida conceptualmente | Pero los números concretos (R² ajustado pasa de 0.967 a 0.975) son los correctos, no los del PDF. |
+
+**Corrección:**  
+- Reemplazar la salida del modelo parabólico con la correcta:  
+
+```r
+mod_par <- lm(rvel ~ densidad + I(densidad^2), data = datos)
+summary(mod_par)
+# Coef: (Intercept) 8.92881, densidad -0.10886, I(densidad^2) 0.0004656
+# RSE: 0.2378, R²: 0.9768
+```
+
+- Ajustar los comentarios de los gráficos según este modelo.
+
+---
+
+### Ejercicio 9.2 de Carmona – Comparación con velocidad original
+
+| Aspecto | ¿Correcto? | Observaciones |
+|---------|------------|----------------|
+| Modelo lineal con velocidad | ✅ Correcto | R² ajustado = 0.941 (no 0.908 como aparece en la tabla). |
+| Modelo parabólico con velocidad | ✅ Correcto | R² ajustado = 0.9891. |
+| Tabla comparativa | ❌ **Error** | Valores de R² ajustado incorrectos:  
+  - Lineal (velocidad): debería ser **0.941** (no 0.908)  
+  - Parabólico (velocidad): **0.989** (no 0.949)  
+  - Lineal (raíz): **0.967** (correcto)  
+  - Parabólico (raíz): **0.975** (correcto) |
+| Tests de Breusch-Pagan | ❌ **Interpretación errónea** |  
+  - `bptest(mod_vel)` da **p = 0.9442**, no 0.02. El estudiante escribe “p‑valor 0.02” pero el output muestra 0.9442.  
+  - `bptest(mod_vel_par)` da **p = 0.02337**, correctamente identificado como significativo. |
+| Conclusión final | ✅ Correcta | La transformación raíz cuadrada estabiliza la varianza y linealiza la relación. |
+
+**Correcciones:**  
+- Corregir la tabla de R² ajustado.  
+- Rectificar el comentario sobre el test de Breusch-Pagan para `mod_vel`: p = 0.94 → **no hay evidencia de heterocedasticidad** (aunque el gráfico sugiere lo contrario, el test no la detecta).  
+- Mantener la conclusión de que la raíz cuadrada es preferible.
+
+---
+
+## Resumen de correcciones necesarias
+
+| Ejercicio | Tipo de error | Corrección |
+|-----------|---------------|-------------|
+| 1 (SAT) | Cálculo del umbral de leverage | Usar 2*(p+1)/n = 0.2; reconocer que hay 4 puntos con leverage alto. |
+| 4 (Swiss) | Interpretación de p-valor de normalidad | p = 0.9318 → no rechazar normalidad. |
+| 9 (Divusa) | Interpretación de colinealidad | κ = 25 → moderada, no grave; VIF < 4. |
+| 11 (Prostate) | Número de condición mal interpretado | κ alto por escala, pero VIF bajos → sin colinealidad grave. |
+| 9.1 (Carmona) | Salida del modelo parabólico incorrecta | Sustituir por la salida correcta (R²=0.9768, RSE=0.2378). |
+| 9.2 (Carmona) | Tabla de R² ajustado y test BP | Corregir valores de R² y comentarios sobre p-valores. |
+
+El resto de las salidas y comentarios son **correctos** o suficientemente aproximados.
+
+Si desea que proporcione el **código R corregido** en formato `R Markdown` para cada uno de estos apartados, indíquelo y lo generaré.
 
 
 ***
