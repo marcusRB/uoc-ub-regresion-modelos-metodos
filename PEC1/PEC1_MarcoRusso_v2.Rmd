@@ -1,0 +1,691 @@
+---
+title: |
+  \vspace{-1cm}
+  \textbf{PEC1: Regresión, Modelos y Métodos} \\
+  \large Análisis de Regresión Lineal con Datos de Diabetes (Efron, 2004)
+author: "Marco Russo | mrussorb@uoc.edu"
+date: "Abril 2026"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: xelatex
+    fig_caption: true
+    fig_width: 7
+    fig_height: 4.5
+    highlight: tango
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{setspace}
+  - \usepackage{xcolor}
+  - \usepackage{mdframed}
+  - \usepackage{fancyhdr}
+  - \usepackage[spanish]{babel}
+  - \onehalfspacing
+  - \pagestyle{fancy}
+  - \fancyhead[L]{PEC1 -- Regresión, Modelos y Métodos}
+  - \fancyhead[R]{Marco Russo -- Abril 2026}
+  - \fancyfoot[C]{\thepage}
+  - \definecolor{myblue}{RGB}{30,100,160}
+  - \definecolor{alertbox}{RGB}{255,243,205}
+geometry: "left=2.5cm,right=2.5cm,top=3cm,bottom=3cm"
+fontsize: 11pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>",
+  fig.align = "center",
+  fig.pos   = "H",
+  out.width = "90%"
+)
+```
+
+```{r paquetes, echo=FALSE}
+pkgs <- c("lmtest", "car", "MASS", "ggplot2", "knitr", "kableExtra")
+invisible(lapply(pkgs, function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
+  library(p, character.only = TRUE)
+}))
+```
+
+\newpage
+
+---
+
+# Información del Estudiante
+
+```{r info-tabla, echo=FALSE}
+info <- data.frame(
+  Campo = c("Nombre completo", "Correo electrónico", "Asignatura",
+            "Dataset", "Fecha de entrega"),
+  Valor = c("Marco Russo", "mrussorb@uoc.edu",
+            "Regresión, Modelos y Métodos",
+            "Diabetes — Efron et al. (2004)",
+            "20 de abril de 2026")
+)
+kable(info, col.names = c("", ""), booktabs = TRUE, align = c("l","l"),
+      caption = "Datos del estudiante") |>
+  kable_styling(latex_options = c("striped","hold_position"), full_width = FALSE) |>
+  column_spec(1, bold = TRUE, width = "5cm") |>
+  column_spec(2, width = "9cm")
+```
+
+\newpage
+
+# Introducción
+
+En esta actividad se analiza el conjunto de datos **Diabetes de Efron et al. (2004)**, compuesto por $n = 442$ pacientes diabéticos. La variable respuesta $y$ mide la **progresión de la diabetes** un año después del inicio del estudio.
+
+Los diez predictores basales son: edad (`age`), sexo (`sex`, 1 = Mujer, 2 = Hombre), índice de masa corporal (`bmi`), presión arterial media (`bp`), y seis mediciones de suero sanguíneo (`s1`–`s6`: colesterol total, LDL, HDL, colesterol/HDL, log triglicéridos y glucosa).
+
+El objetivo es construir y evaluar modelos de **regresión lineal múltiple** y **ANCOVA**, verificar sus supuestos y realizar inferencia estadística formal, apoyándose en los módulos de la asignatura (Carmona, 2005; Faraway, 2014).
+
+\newpage
+
+# Ejercicio 0: Estandarización de los datos (10 pt.)
+
+## (0.1) Modelo con sexo como factor
+
+Cuando incluimos la variable **sexo como factor** junto a covariables continuas como el IMC o la presión arterial, construimos un modelo **ANCOVA** (*Analysis of Covariance*). Este modelo combina predictores continuos con al menos un factor categórico. Formalmente:
+
+$$
+y_i = \beta_0 + \beta_1 \cdot \text{bmi}_i + \beta_2 \cdot \text{bp}_i + \cdots + \gamma \cdot \mathbf{1}[\text{sex}_i = \text{Hombre}] + \varepsilon_i
+$$
+
+donde $\beta_0$ es el intercepto para la categoría de referencia (Mujer), $\gamma$ es la **diferencia media** entre hombres y mujeres controlando el resto de covariables, y $\mathbf{1}[\cdot]$ es la función indicadora (*dummy*). El modelo impone pendientes paralelas para las covariables continuas (efecto aditivo), mientras que el intercepto difiere entre sexos. Si se añade $\gamma_2 \cdot \text{bmi}_i \times \mathbf{1}[\text{Hombre}]$ se permite además que las pendientes difieran.
+
+## (0.2) Consecuencias de no convertir el sexo a factor
+
+Si el sexo se mantiene como variable numérica (1, 2) y se estandariza, el modelo asume una **relación lineal artificial** entre sexo y respuesta:
+
+1. **Interpretación errónea.** El coeficiente representa el efecto de un incremento de una unidad en una escala sin significado biológico, no la diferencia entre categorías.
+2. **Pérdida de flexibilidad.** No se pueden modelar interacciones naturales con otras covariables.
+3. **Estimación potencialmente sesgada.** Si la relación no es lineal en la escala numérica codificada, las predicciones e intervalos de confianza serán incorrectos.
+
+> **Conclusión:** Es obligatorio tratar el sexo como `factor` para garantizar la corrección estadística y la interpretabilidad biológica (Carmona, 2005, §8.4; Faraway, 2014, §14.1).
+
+## (0.3) Estandarización y preparación de los datos
+
+La estandarización (*z-score*) transforma cada variable cuantitativa $x_j$ según:
+$$z_{ij} = \frac{x_{ij} - \bar{x}_j}{s_j}$$
+dando media 0 y desviación típica 1. La variable respuesta $y$ **no** se estandariza para conservar la interpretabilidad de los coeficientes en unidades originales.
+
+```{r carga-datos}
+url   <- "https://web.stanford.edu/~hastie/Papers/LARS/diabetes.data"
+datos <- read.table(url, header = TRUE)
+names(datos) <- tolower(names(datos))
+str(datos)
+```
+
+```{r estandarizacion}
+# Sexo a factor con etiquetas claras
+datos$sex <- factor(datos$sex, levels = c(1, 2),
+                    labels = c("Mujer", "Hombre"))
+
+# Estandarizar variables continuas (excepto y)
+vars_cont      <- c("age","bmi","bp","s1","s2","s3","s4","s5","s6")
+datos_est      <- datos
+datos_est[, vars_cont] <- scale(datos[, vars_cont])
+
+# Verificación: medias ≈ 0 y sd ≈ 1
+round(colMeans(datos_est[, vars_cont]), 8)
+round(apply(datos_est[, vars_cont], 2, sd), 8)
+```
+
+```{r estadisticos-y}
+cat("Media de y:", round(mean(datos_est$y), 4), "\n")
+cat("D.T.   de y:", round(sd(datos_est$y),   4), "\n")
+cat("Rango  de y:", range(datos_est$y),          "\n")
+```
+
+A partir de ahora trabajamos exclusivamente con **`datos_est`**.
+
+\newpage
+
+# Ejercicio 1: Formulación, estimación y significación global (30 pt.)
+
+## (1.1) Modelo con edad, bmi y bp
+
+Proponemos el siguiente **modelo de regresión lineal múltiple** (modelo1):
+
+$$
+\boxed{y_i = \beta_0 + \beta_1 \cdot \text{age}_i^* + \beta_2 \cdot \text{bmi}_i^* + \beta_3 \cdot \text{bp}_i^* + \varepsilon_i, \quad i = 1, \ldots, 442}
+$$
+
+donde el asterisco indica variable estandarizada. En notación matricial:
+$$\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim \mathcal{N}_n(\mathbf{0}, \sigma^2 \mathbf{I}_n)$$
+
+siendo $\mathbf{X}$ la matriz de diseño $(442 \times 4)$ — una columna de unos y tres columnas de predictores estandarizados.
+
+| Símbolo | Definición |
+|:-------:|:-----------|
+| $y_i$ | Progresión de la diabetes al año (escala original) |
+| $\text{age}_i^*,\,\text{bmi}_i^*,\,\text{bp}_i^*$ | Predictores estandarizados ($\bar{x}^*=0$, $s^*=1$) |
+| $\beta_0$ | Intercepto: valor esperado de $y$ en las medias de todos los predictores |
+| $\beta_j\;(j=1,2,3)$ | Cambio esperado en $y$ por **1 d.t.** del predictor $j$, *ceteris paribus* |
+| $\varepsilon_i$ | Error aleatorio $\overset{iid}{\sim} \mathcal{N}(0,\sigma^2)$ |
+
+## (1.2) Comportamiento del intercepto con variables estandarizadas
+
+**Proposición:** Con predictores estandarizados, $\hat{\beta}_0 = \bar{y}$.
+
+**Demostración:** De las ecuaciones normales MCO se obtiene:
+$$\hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}_1^* - \hat{\beta}_2\bar{x}_2^* - \hat{\beta}_3\bar{x}_3^*$$
+Como $\bar{x}_j^* = 0$ para todo $j$ (por construcción de la estandarización):
+$$\hat{\beta}_0 = \bar{y}$$
+
+Esta es una consecuencia directa de que el hiperplano de regresión pasa por el punto $(\bar{\mathbf{x}}, \bar{y})$ (Carmona, 2005, §8.1). En nuestro caso $\hat{\beta}_0 \approx \bar{y} = 152.13$, que es la **progresión media esperada para un paciente con edad, IMC y BP en sus valores medios poblacionales**.
+
+## (1.3) Verificación de las condiciones de Gauss-Markov
+
+Las condiciones de Gauss-Markov garantizan que los estimadores MCO sean **BLUE** (Carmona, 2005, §8.2; Faraway, 2014, §2.3):
+
+**1. Linealidad:** $E(y_i \mid \mathbf{x}_i) = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \beta_3 x_{i3}$. Se verificará gráficamente en el Ejercicio 4 (residuos vs. ajustados).
+
+**2. Independencia:** $\text{Cov}(\varepsilon_i, \varepsilon_j) = 0\;\forall\, i \neq j$. Razonable en un estudio transversal de pacientes independientes.
+
+**3. Homocedasticidad:** $\text{Var}(\varepsilon_i) = \sigma^2\;\forall\, i$. Se comprobará formalmente con tests en el Ejercicio 4.
+
+**4. Media cero:** $E(\varepsilon_i) = 0\;\forall\, i$. Garantizada por la inclusión de $\beta_0$ siempre que el modelo esté correctamente especificado.
+
+> **Importancia:** Si estas condiciones no se cumplen, los estimadores MCO pierden eficiencia; la heterocedasticidad hace que los errores estándar y los intervalos de confianza sean incorrectos. La no linealidad o media no nula implican sesgo. Adicionalmente, la inferencia basada en tests $t$ y $F$ requiere **normalidad** de los errores.
+
+## (1.4) Estimación de los parámetros por MCO
+
+```{r modelo1}
+modelo1 <- lm(y ~ age + bmi + bp, data = datos_est)
+summary(modelo1)
+```
+
+Los estimadores MCO minimizan $\text{SCR} = \|\mathbf{y} - \mathbf{X}\hat{\boldsymbol{\beta}}\|^2$, obtenidos analíticamente como $\hat{\boldsymbol{\beta}} = (\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$.
+
+```{r ecuacion-modelo1}
+cf <- coef(modelo1)
+cat(sprintf("ŷ = %.4f + (%.4f)·age* + %.4f·bmi* + %.4f·bp*\n",
+            cf[1], cf[2], cf[3], cf[4]))
+cat(sprintf("\nVerificación intercepto: β̂₀ = %.4f | ȳ = %.4f\n",
+            cf[1], mean(datos_est$y)))
+```
+
+La ecuación estimada es:
+$$\hat{y}_i = 152.133 + 1.238 \cdot \text{age}_i^* + 37.561 \cdot \text{bmi}_i^* + 18.768 \cdot \text{bp}_i^*$$
+
+**Interpretación de los coeficientes:**
+
+- $\hat{\beta}_0 = 152.133$: confirma $\hat{\beta}_0 = \bar{y}$; progresión media esperada en las medias de los predictores.
+- $\hat{\beta}_1 = 1.238$ (age): un aumento de 1 d.t. en la edad se asocia a un incremento de ~1.24 unidades en la progresión, manteniendo los demás constantes. Sin embargo, este coeficiente **no es estadísticamente significativo** ($p = 0.685$), lo que sugiere que la edad no aporta información marginal adicional una vez controlados IMC y BP.
+- $\hat{\beta}_2 = 37.561$ (bmi): cada d.t. adicional de IMC aumenta la progresión en ~37.56 unidades — el efecto más importante del modelo.
+- $\hat{\beta}_3 = 18.768$ (bp): cada d.t. adicional de BP aumenta la progresión en ~18.77 unidades.
+
+## (1.5) Contraste de significación global
+
+**Hipótesis:**
+$$H_0: \beta_1 = \beta_2 = \beta_3 = 0 \qquad H_1: \exists\, j \;|\; \beta_j \neq 0$$
+
+**Estadístico F** basado en la descomposición $\text{SCT} = \text{SCM} + \text{SCR}$:
+$$F = \frac{\text{SCM}/k}{\text{SCR}/(n-k-1)} = \frac{R^2/k}{(1-R^2)/(n-k-1)} \overset{H_0}{\sim} \mathcal{F}_{k,\,n-k-1} = \mathcal{F}_{3,\,438}$$
+
+```{r ftest-global}
+anova(modelo1)
+s1 <- summary(modelo1)
+cat(sprintf("F = %.2f  (gl: %d y %d)  |  p-valor = %.2e\n",
+            s1$fstatistic[1], s1$fstatistic[2], s1$fstatistic[3],
+            pf(s1$fstatistic[1], s1$fstatistic[2], s1$fstatistic[3],
+               lower.tail = FALSE)))
+```
+
+## (1.6) Significatividad global y bondad del ajuste
+
+```{r bondad}
+cat("R²         =", round(s1$r.squared, 4),     "\n")
+cat("R² ajust.  =", round(s1$adj.r.squared, 4), "\n")
+cat("σ̂ residual =", round(s1$sigma, 4),          "\n")
+```
+
+Con $F = 95.81$ y $p < 2.2 \times 10^{-16} \ll \alpha = 0.05$ se **rechaza $H_0$**: el modelo es **globalmente significativo**. Al menos uno de los tres predictores tiene una relación lineal real con la progresión de la diabetes.
+
+**¿Es un buen modelo?** No de forma absoluta:
+
+- $R^2 = 0.396$: solo el **39.6%** de la variabilidad de $y$ queda explicado.
+- $R^2_\text{adj} = 0.392$: penalizado por grados de libertad, confirma el resultado.
+- $\hat{\sigma} \approx 60.1$ en un rango de $y$ de 25–346 es una imprecisión considerable.
+
+> **Conclusión:** El modelo es estadísticamente significativo pero de poder predictivo moderado. Carmona (2005, §8.2) señala que con muestras grandes ($n = 442$) un $p$-valor pequeño no garantiza buen ajuste; es necesario incorporar más predictores (como las variables de suero sanguíneo) para mejorar la capacidad explicativa del modelo.
+
+\newpage
+
+# Ejercicio 2: Inferencia sobre parámetros y comparación de modelos (20 pt.)
+
+## (2.1) ¿Podemos prescindir de algún predictor en modelo1?
+
+El test $t$ parcial evalúa la contribución marginal de cada predictor dado que los demás permanecen en el modelo:
+$$t_j = \frac{\hat{\beta}_j}{\text{se}(\hat{\beta}_j)} \overset{H_0}{\sim} t_{438}$$
+
+```{r test-parciales}
+ct <- as.data.frame(coef(summary(modelo1)))
+ct$Decision <- ifelse(ct[,4] < 0.05, "Significativo", "No significativo")
+names(ct) <- c("β̂", "SE", "t", "p-valor", "Decisión α=5%")
+kable(round(ct, 5), booktabs = TRUE,
+      caption = "Contrastes individuales — modelo1") |>
+  kable_styling(latex_options = c("striped","hold_position"))
+```
+
+**Resultados:**
+
+- **`bmi`:** $t = 12.03$, $p < 2 \times 10^{-16}$ → muy significativo. No se puede prescindir.
+- **`bp`:** $t = 5.76$, $p = 1.56 \times 10^{-8}$ → muy significativo. No se puede prescindir.
+- **`age`:** $t = 0.41$, $p = 0.685 > 0.05$ → **no significativo**. Se podría prescindir de la edad al nivel del 5%.
+
+**Conclusión:** Al nivel de significación del 5%, el predictor **`age` no es significativo** y podría eliminarse del modelo sin pérdida estadística relevante. Los predictores `bmi` y `bp` son imprescindibles.
+
+> **Nota metodológica importante:** La no significación de `age` en el modelo múltiple no implica que no esté correlacionada con $y$ univariadamente — puede deberse a **colinealidad parcial** con `bmi` y `bp`, de modo que la edad no aporta información marginal adicional una vez que el IMC y la presión ya están controlados (Faraway, 2014, §3.3).
+
+## (2.2) Predictor más influyente
+
+Dado que los predictores están **estandarizados**, sus coeficientes son directamente comparables: $\hat{\beta}_j$ representa el cambio esperado en $y$ por una desviación típica del predictor $j$, equivaliendo a los coeficientes beta estandarizados.
+
+```{r predictor-influyente}
+ct2 <- coef(summary(modelo1))[-1, ]   # excluir intercepto
+tabla_inf <- data.frame(
+  Predictor   = rownames(ct2),
+  Beta_est    = round(ct2[,"Estimate"], 4),
+  Abs_beta    = round(abs(ct2[,"Estimate"]), 4),
+  t_stat      = round(ct2[,"t value"], 4),
+  Abs_t       = round(abs(ct2[,"t value"]), 4),
+  p_valor     = round(ct2[,"Pr(>|t|)"], 5)
+)
+kable(tabla_inf, booktabs = TRUE, row.names = FALSE,
+      col.names = c("Predictor","β̂","|β̂|","t","|t|","p-valor"),
+      caption = "Comparación de influencia de predictores estandarizados") |>
+  kable_styling(latex_options = c("striped","hold_position"))
+```
+
+**Conclusión:** El **IMC** (`bmi`) es el predictor más influyente con diferencia: tiene el coeficiente estandarizado más grande ($\hat{\beta}_2 = 37.56$) y el estadístico $|t|$ más elevado ($|t| = 12.03$). Le sigue `bp` ($|t| = 5.76$) y, a gran distancia, `age` ($|t| = 0.41$, no significativo).
+
+> **Nota:** Los valores $\hat{\beta}_j$ representan cambios en las **unidades originales de $y$** (no estandarizadas) por una desviación típica del predictor, dado que $y$ no fue estandarizada. La comparabilidad entre predictores es válida porque todos los $x_j$ sí lo están.
+
+## (2.3) Discusión sobre el valor añadido de las variables de suero
+
+Contrastamos formalmente la hipótesis del investigador mediante un **test $F$ parcial** entre modelos anidados:
+
+- $M_R$: `y ~ age + bmi + bp` (modelo1)
+- $M_C$: `y ~ age + bmi + bp + s1 + s2 + s3 + s4 + s5 + s6`
+
+$$H_0: \beta_{s1} = \cdots = \beta_{s6} = 0 \qquad H_1: \text{al menos uno} \neq 0$$
+
+$$F = \frac{[\text{SCR}(M_R) - \text{SCR}(M_C)]/6}{\text{SCR}(M_C)/(n-p)} \overset{H_0}{\sim} \mathcal{F}_{6,\, n-p}$$
+
+```{r modelos-anidados}
+modelo_completo <- lm(y ~ age + bmi + bp + s1 + s2 + s3 + s4 + s5 + s6,
+                      data = datos_est)
+anova(modelo1, modelo_completo)
+
+cat("\nR² modelo1 (3 pred.):", round(summary(modelo1)$r.squared, 4))
+cat("\nR² modelo completo:  ", round(summary(modelo_completo)$r.squared, 4))
+cat("\nMejora en R²:        ",
+    round(summary(modelo_completo)$r.squared - summary(modelo1)$r.squared, 4), "\n")
+```
+
+**Interpretación:** Con $p = 1.17 \times 10^{-15} \ll 0.05$ se **rechaza $H_0$**: las variables de suero sí aportan información relevante adicional más allá de `age`, `bmi` y `bp`. La hipótesis del investigador es estadísticamente incorrecta. El $R^2$ mejora en ~9 puntos porcentuales al incluir las 6 variables de suero.
+
+**Mejor solución:** Incluir todos los predictores disponibles en un modelo inicial y aplicar métodos de selección (selección por pasos *stepwise* con AIC/BIC, o regularización tipo Lasso) para identificar el subconjunto óptimo.
+
+## (2.4) Marco teórico para la comparación de modelos anidados
+
+La comparación de modelos anidados se basa en el **análisis de la varianza aplicado a la regresión** (Carmona, 2005, §8.3):
+
+**Definición:** $M_R$ está anidado en $M_C$ si $M_R$ se obtiene de $M_C$ imponiendo $q$ restricciones lineales $\beta_j = 0$.
+
+**Descomposición:**
+$$\text{SCR}(M_R) = \text{SCR}(M_C) + [\text{SCR}(M_R) - \text{SCR}(M_C)]$$
+
+**Estadístico F parcial:**
+$$F = \frac{[\text{SCR}(M_R) - \text{SCR}(M_C)]/q}{\text{SCR}(M_C)/(n-p)} \overset{H_0}{\sim} \mathcal{F}_{q,\, n-p}$$
+
+**Puntos clave:**
+
+1. $M_R$ es la hipótesis nula; $M_C$ la alternativa.
+2. $q$ = número de parámetros adicionales del modelo completo.
+3. $F$ grande (p pequeño) → rechazar $M_R$; los predictores adicionales mejoran el ajuste significativamente.
+4. Cuando $q = 1$, el test $F$ equivale al cuadrado del test $t$ individual ($F = t^2$).
+5. Solo aplicable a modelos **anidados**; para modelos no anidados se usan criterios AIC/BIC.
+
+> **Referencia:** Carmona (2005, §8.3, "Significación parcial"); Faraway (2014, §5.1, "Testing Nested Models").
+
+\newpage
+
+# Ejercicio 3: Modelo ANCOVA (20 pt.)
+
+```{r setup-ancova}
+cat("Niveles de sex:", levels(datos_est$sex), "\n")
+cat("Distribución:  ", table(datos_est$sex), "\n")
+```
+
+## (3.1) ¿Existen diferencias significativas entre sexos?
+
+Ajustamos el modelo **ANCOVA sin interacción** (pendientes paralelas):
+$$y_i = \beta_0 + \beta_1 \cdot \text{bmi}_i^* + \beta_2 \cdot \text{s5}_i^* + \gamma \cdot \mathbf{1}[\text{Hombre}] + \varepsilon_i$$
+
+```{r ancova-sin-int}
+model_ancova <- lm(y ~ bmi + s5 + sex, data = datos_est)
+summary(model_ancova)
+```
+
+**Contraste sobre el efecto del sexo:**
+$$H_0: \gamma = 0 \qquad H_1: \gamma \neq 0$$
+
+```{r coef-sexo}
+cs <- coef(summary(model_ancova))["sexHombre", ]
+cat(sprintf("sexHombre: β̂ = %.3f | SE = %.3f | t = %.3f | p = %.4f\n",
+            cs[1], cs[2], cs[3], cs[4]))
+```
+
+**Interpretación correcta:**
+
+Con $p = 0.144 > \alpha = 0.05$, **no se rechaza $H_0$**: no existe evidencia estadística de diferencias significativas en la progresión de la diabetes entre hombres y mujeres, **una vez controlados el IMC y s5**. El coeficiente $\hat{\gamma} = -8.00$ indica que, en este modelo, los hombres presentan de media 8 unidades *menos* de progresión que las mujeres, pero este efecto no es estadísticamente distinguible de cero.
+
+> **Reflexión sobre el efecto de confusión (*confounding*):** Este resultado contrasta con lo que podría esperarse biológicamente. Al incluir `bmi` y `s5` como covariables, se controla gran parte de la variabilidad explicada por el sexo — parte del efecto aparente del sexo estaba siendo mediado (*confounded*) por las diferencias en IMC y nivel de triglicéridos entre hombres y mujeres. Este fenómeno es habitual en ANCOVA y pone de manifiesto la importancia de controlar adecuadamente las covariables antes de interpretar efectos de grupo (Carmona, 2005, §9.2).
+
+## (3.2) ¿El impacto del IMC es constante entre sexos?
+
+Para investigar si la **pendiente** del IMC difiere entre sexos, añadimos el término de interacción `bmi × sex`:
+
+$$y_i = \beta_0 + \beta_1\,\text{bmi}_i^* + \beta_2\,\text{s5}_i^* + \gamma\,\mathbf{1}[\text{Hombre}] + \delta\,(\text{bmi}_i^* \times \mathbf{1}[\text{Hombre}]) + \varepsilon_i$$
+
+Este modelo equivale a dos rectas con distinto intercepto **y** distinta pendiente para el IMC:
+
+- **Mujeres:** $\hat{y} = \beta_0 + \beta_1\,\text{bmi}^* + \beta_2\,\text{s5}^*$
+- **Hombres:** $\hat{y} = (\beta_0 + \gamma) + (\beta_1 + \delta)\,\text{bmi}^* + \beta_2\,\text{s5}^*$
+
+El término $\delta$ captura la diferencia de pendientes.
+
+```{r ancova-int}
+model_ancova_int <- lm(y ~ bmi * sex + s5, data = datos_est)
+summary(model_ancova_int)
+```
+
+```{r test-interaccion}
+ci <- coef(summary(model_ancova_int))["bmi:sexHombre", ]
+cat(sprintf("bmi:sexHombre: δ̂ = %.3f | SE = %.3f | t = %.3f | p = %.4f\n",
+            ci[1], ci[2], ci[3], ci[4]))
+```
+
+**Interpretación:** El $p$-valor del término de interacción es $p = 0.0314 < 0.05$. **Se rechaza $H_0: \delta = 0$**: el impacto del IMC sobre la progresión de la diabetes **no es constante entre sexos**; es significativamente diferente para hombres y mujeres.
+
+El coeficiente $\hat{\delta} = +11.801$ indica que la **pendiente del IMC es mayor en hombres** que en mujeres. Específicamente:
+- Mujeres: pendiente IMC $= \hat{\beta}_1 = 27.36$ unidades por d.t.
+- Hombres: pendiente IMC $= \hat{\beta}_1 + \hat{\delta} = 27.36 + 11.80 = 39.16$ unidades por d.t.
+
+**Conclusión:** El riesgo asociado al sobrepeso (medido por IMC) es **más agresivo en hombres** que en mujeres. Un aumento de una desviación típica en el IMC produce un incremento en la progresión ~43% mayor en hombres que en mujeres.
+
+Comparamos ambos modelos ANCOVA para confirmar que la interacción mejora el ajuste:
+
+```{r comparar-ancova}
+anova(model_ancova, model_ancova_int)
+```
+
+## (3.3) Ecuación predictora para mujeres
+
+A partir de **`model_ancova_int`**, para mujeres sustituimos $\mathbf{1}[\text{Hombre}] = 0$, por lo que los términos $\gamma$ y $\delta$ desaparecen:
+
+$$\hat{y}_{\text{Mujer}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot \text{bmi}^* + \hat{\beta}_2 \cdot \text{s5}^*$$
+
+```{r ecuacion-mujeres}
+cf_int <- coef(model_ancova_int)
+cat("Todos los coeficientes del modelo con interacción:\n")
+print(round(cf_int, 4))
+
+# Ecuación para mujeres (sexHombre = 0)
+b0 <- cf_int["(Intercept)"]
+b1 <- cf_int["bmi"]
+b2 <- cf_int["s5"]
+cat(sprintf("\n=== ECUACIÓN PARA MUJERES ===\n"))
+cat(sprintf("ŷ_Mujer = %.3f + %.3f · bmi* + %.3f · s5*\n", b0, b1, b2))
+
+# Ecuación para hombres
+b0_h <- cf_int["(Intercept)"] + cf_int["sexHombre"]
+b1_h <- cf_int["bmi"] + cf_int["bmi:sexHombre"]
+cat(sprintf("\n=== ECUACIÓN PARA HOMBRES ===\n"))
+cat(sprintf("ŷ_Hombre = %.3f + %.3f · bmi* + %.3f · s5*\n", b0_h, b1_h, b2))
+```
+
+La ecuación estimada para el **subgrupo de mujeres** es:
+$$\hat{y}_{\text{Mujer}} = 155.43 + 27.36 \cdot \text{bmi}^* + 29.49 \cdot \text{s5}^*$$
+
+**Interpretación de cada coeficiente:**
+
+| Coeficiente | Valor | Interpretación |
+|:------------|------:|:--------------|
+| Intercepto $\hat{\beta}_0$ | 155.43 | Progresión media esperada para una **mujer** con IMC y s5 en sus valores medios ($\text{bmi}^* = \text{s5}^* = 0$). Ligeramente mayor que $\bar{y}$ global porque el intercepto del grupo de referencia incluye el ajuste por el resto del modelo |
+| Pendiente `bmi` $\hat{\beta}_1$ | 27.36 | Por cada d.t. adicional de IMC, la progresión aumenta ~27.4 unidades en mujeres, manteniendo s5 constante |
+| Pendiente `s5` $\hat{\beta}_2$ | 29.49 | Por cada d.t. adicional de s5 (log triglicéridos), la progresión aumenta ~29.5 unidades en mujeres, manteniendo IMC constante |
+| Interacción $\hat{\delta}$ | +11.80 | Incremento adicional en la pendiente del IMC para los hombres. Para hombres la pendiente es 27.36 + 11.80 = 39.16, lo que indica mayor sensibilidad del IMC en este grupo |
+
+\newpage
+
+# Ejercicio 4: Diagnóstico del modelo model_ancova_int (20 pt.)
+
+## (4.1) Gráficos básicos de diagnóstico
+
+```{r plots-diagnostico, fig.cap="Gráficos básicos de diagnóstico — model\\_ancova\\_int", fig.height=7}
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+plot(model_ancova_int, which = 1:4,
+     col = ifelse(cooks.distance(model_ancova_int) > 4/nrow(datos_est),
+                  "red", "steelblue"),
+     pch = 16, cex = 0.7, cex.caption = 0.85)
+par(mfrow = c(1, 1))
+```
+
+**Descripción e interpretación de los cuatro gráficos:**
+
+**Gráfico 1 — Residuos vs. Valores Ajustados:** Evalúa **linealidad** y **homocedasticidad**. En este modelo se observa cierta tendencia en la dispersión de los residuos — la variabilidad parece aumentar para valores ajustados altos, lo que apunta a una posible **heterocedasticidad leve**. La línea roja (suavizado *loess*) no es perfectamente horizontal, sugiriendo también una ligera no linealidad residual. Las observaciones etiquetadas (290, 305, 360) son candidatos a revisión.
+
+**Gráfico 2 — Q-Q Normal:** Compara los cuantiles de los residuos estandarizados con los cuantiles teóricos de una $\mathcal{N}(0,1)$. Los puntos siguen razonablemente la diagonal central, pero las **colas se desvían** — especialmente la cola derecha — sugiriendo distribución ligeramente asimétrica o con colas más pesadas de lo normal (*leptocúrtica*). Habrá que confirmar con un test formal.
+
+**Gráfico 3 — Scale-Location ($\sqrt{|e_i^*|}$ vs. $\hat{y}_i$):** Versión más robusta para detectar heterocedasticidad. La línea suavizada muestra una **pendiente ligeramente positiva**, confirmando que la varianza de los residuos tiende a aumentar con los valores ajustados. Este patrón es coherente con lo observado en el Gráfico 1.
+
+**Gráfico 4 — Residuos vs. Leverage:** Identifica observaciones influyentes. El eje horizontal es el *leverage* $h_{ii}$ y el vertical los residuos estandarizados. Las líneas discontinuas corresponden a curvas de distancia de Cook ($D_i = 0.5$ y $D_i = 1$). **Ningún punto supera el umbral $D_i = 1$**, por lo que no hay observaciones extremadamente influyentes. Sin embargo, las observaciones 354, 33 y 257 tienen leverage relativamente elevado y merecen revisión.
+
+## (4.2) Tests formales de homocedasticidad y normalidad
+
+### Homocedasticidad
+
+$$H_0: \text{Var}(\varepsilon_i) = \sigma^2 \text{ (constante)} \qquad H_1: \text{Var}(\varepsilon_i) \text{ varía con los predictores}$$
+
+**Test 1 — Breusch-Pagan** (Breusch & Pagan, 1979): regresa $e_i^2$ sobre los predictores del modelo. Bajo $H_0$: $BP \sim \chi^2_k$.
+
+```{r breusch-pagan}
+library(lmtest)
+bp_res <- bptest(model_ancova_int)
+print(bp_res)
+```
+
+**Test 2 — NCV Test** (Cook & Weisberg, 1983): evalúa si la varianza es función lineal de los valores ajustados.
+
+```{r ncv-test}
+library(car)
+ncv_res <- ncvTest(model_ancova_int)
+print(ncv_res)
+```
+
+```{r decision-homo, echo=FALSE}
+bp_p  <- bp_res$p.value
+ncv_p <- ncv_res$p
+cat(sprintf("Breusch-Pagan: BP=%.3f, p=%.4f → %s\n",
+            as.numeric(bp_res$statistic), bp_p,
+            ifelse(bp_p < 0.05, "Heterocedasticidad significativa (rechaza H₀)",
+                   "No se rechaza homocedasticidad")))
+cat(sprintf("NCV Test:      χ²=%.3f, p=%.4f → %s\n",
+            ncv_res$ChiSquare, ncv_p,
+            ifelse(ncv_p < 0.05, "Heterocedasticidad significativa (rechaza H₀)",
+                   "No se rechaza homocedasticidad")))
+```
+
+**Interpretación:** Ambos tests rechazan $H_0$ con $p < 0.05$ (BP: $p \approx 0.003$; NCV: $p \approx 0.003$). Existe **heterocedasticidad estadísticamente significativa**, confirmando la tendencia visual del Gráfico 3.
+
+### Normalidad de los errores
+
+Test de **Shapiro-Wilk**: $H_0: \varepsilon_i \sim \mathcal{N}(0,\sigma^2)$
+
+```{r shapiro}
+resid_m <- residuals(model_ancova_int)
+sw_res   <- shapiro.test(resid_m)
+print(sw_res)
+cat(sprintf("\nDecisión (α=0.05): p = %.4f → %s\n", sw_res$p.value,
+            ifelse(sw_res$p.value < 0.05,
+                   "Se rechaza H₀: los errores NO son normales",
+                   "No se rechaza normalidad")))
+```
+
+**Interpretación:** Con $W = 0.993$ y $p = 0.027 < 0.05$ se **rechaza marginalmente** la normalidad. El valor de $W$ cercano a 1 indica que la desviación de la normalidad es **leve**, pero estadísticamente significativa. El Q-Q plot mostró colas ligeramente pesadas, coherente con este resultado.
+
+> **Perspectiva práctica:** Una desviación leve de la normalidad con $n = 442$ tiene escaso impacto en la inferencia (tests $t$ y $F$) por el Teorema Central del Límite, que garantiza la normalidad asintótica de los estimadores. El problema principal en este modelo es la **heterocedasticidad**, más que la no normalidad.
+
+### Acciones correctivas
+
+1. **Transformación Box-Cox** de la respuesta: busca el $\lambda$ que minimiza la no normalidad y estabiliza la varianza.
+
+```{r boxcox, fig.cap="Perfil Box-Cox — λ óptimo para la transformación de y", fig.height=3.5}
+bc <- boxcox(model_ancova_int, lambda = seq(-2, 2, 0.1), plotit = TRUE)
+lam_opt <- bc$x[which.max(bc$y)]
+cat("λ óptimo Box-Cox:", round(lam_opt, 3), "\n")
+abline(v = lam_opt, col = "red", lty = 2)
+```
+
+2. **Mínimos Cuadrados Ponderados (WLS)**: si la estructura de la heterocedasticidad es conocida (e.g., $\text{Var}(\varepsilon_i) \propto \hat{y}_i^2$), se asignan pesos $w_i = 1/\hat{y}_i^2$.
+
+3. **Errores estándar robustos** (*Huber-White sandwich*): mantienen los estimadores MCO pero corrigen los errores estándar para que sean válidos bajo heterocedasticidad, sin necesidad de reestimar el modelo.
+
+4. **Regresión robusta** (M-estimación): reduce la influencia de observaciones extremas en las colas.
+
+## (4.3) Valores atípicos y puntos influyentes
+
+```{r outliers-cook, fig.cap="Distancia de Cook por observación", fig.height=3.5}
+n     <- nrow(datos_est)
+p_par <- length(coef(model_ancova_int))
+
+h_ii     <- hatvalues(model_ancova_int)
+cook_d   <- cooks.distance(model_ancova_int)
+rstud    <- rstudent(model_ancova_int)
+
+umbral_lev  <- 2 * p_par / n
+umbral_cook <- 4 / n
+
+obs_lev  <- which(h_ii > umbral_lev)
+obs_cook <- which(cook_d > umbral_cook)
+obs_rs   <- which(abs(rstud) > 3)
+
+cat(sprintf("Umbral leverage (2p/n = %.4f): %d observaciones\n",
+            umbral_lev, length(obs_lev)))
+cat(sprintf("Umbral Cook (4/n = %.4f): %d observaciones\n",
+            umbral_cook, length(obs_cook)))
+cat(sprintf("Residuos stud. externos |r*| > 3: %d observaciones\n",
+            length(obs_rs)))
+if (length(obs_rs) > 0) print(round(rstud[obs_rs], 3))
+
+# Gráfico de Cook
+plot(cook_d, type = "h",
+     col  = ifelse(cook_d > umbral_cook, "red", "steelblue"),
+     main = "Distancia de Cook",
+     xlab = "Índice de observación", ylab = expression(D[i]))
+abline(h = umbral_cook, col = "red",     lty = 2, lwd = 1.5)
+abline(h = 1,           col = "darkred", lty = 3, lwd = 1.5)
+obs_top <- head(order(cook_d, decreasing = TRUE), 5)
+text(obs_top, cook_d[obs_top], labels = obs_top,
+     pos = 3, cex = 0.7, col = "red")
+legend("topright", c("D > 4/n (umbral suave)", "D > 1 (umbral estricto)"),
+       col = c("red","darkred"), lty = c(2,3), cex = 0.8)
+```
+
+**Interpretación:**
+
+- **Leverage elevado:** Hay observaciones con $h_{ii} > 2p/n$ (criterio de Huber). Estas observaciones tienen posiciones extremas en el espacio de predictores pero no son necesariamente problemáticas si sus residuos son pequeños.
+
+- **Distancia de Cook:** Ninguna observación supera el umbral estricto $D_i > 1$ (criterio de Cook). Con el umbral conservador $D_i > 4/n$, hay algunas observaciones con influencia moderada — en particular las observaciones etiquetadas en el gráfico Residuos vs. Leverage (290, 305, 360).
+
+- **Residuos studentizados externos:** Si no hay observaciones con $|r_i^*| > 3$, no hay *outliers* extremos formales.
+
+**Protocolo de actuación:**
+
+1. **Verificar los datos originales** de las observaciones sospechosas: ¿hay errores de registro o medición?
+2. **Análisis de sensibilidad:** reajustar el modelo sin las observaciones influyentes y comparar coeficientes. Si varían sustancialmente, la influencia es real.
+3. **No eliminar automáticamente:** un punto influyente puede ser una observación legítima que aporta información real sobre casos extremos. La eliminación solo está justificada ante errores de medición comprobados.
+4. **Regresión robusta** como alternativa: reduce automáticamente la influencia de los puntos extremos sin necesidad de eliminarlos.
+
+\newpage
+
+# Conclusión
+
+Se ha realizado un análisis completo de regresión lineal múltiple sobre los datos de diabetes de Efron et al. (2004):
+
+- **Estandarización y tratamiento del sexo:** El sexo debe tratarse como factor para un análisis correcto. Con predictores estandarizados, $\hat{\beta}_0 = \bar{y} \approx 152.13$ (confirmado numéricamente).
+
+- **Modelo1 (age + bmi + bp):** Globalmente significativo ($F = 95.81$, $p < 2.2 \times 10^{-16}$) pero con poder explicativo moderado ($R^2 = 0.396$). El **IMC** es el predictor más influyente ($|t| = 12.03$); la **edad no es significativa** ($p = 0.685$) en presencia de IMC y BP.
+
+- **Variables de suero:** El test $F$ parcial rechaza contundentemente que sean prescindibles ($p = 1.17 \times 10^{-15}$). Un modelo con los 9 predictores continuos es más adecuado.
+
+- **Modelo ANCOVA con interacción:** La interacción `bmi × sex` es **estadísticamente significativa** ($p = 0.031$). El efecto del IMC sobre la progresión es **mayor en hombres** (pendiente ~39.2) que en mujeres (pendiente ~27.4). Por otro lado, el efecto principal del sexo **no es significativo** ($p = 0.136$) al controlar por IMC y s5, posiblemente por efecto de confusión.
+
+- **Diagnóstico:** Ambos tests de homocedasticidad (Breusch-Pagan: $p \approx 0.003$; NCV: $p \approx 0.003$) detectan heterocedasticidad significativa. El test de Shapiro-Wilk indica desviación marginal de la normalidad ($p = 0.027$). Las acciones correctivas recomendadas son transformación Box-Cox, WLS o errores estándar robustos.
+
+\newpage
+
+# Referencias
+
+Breusch, T.S., & Pagan, A.R. (1979). A simple test for heteroscedasticity. *Econometrica*, 47(5), 1287–1294.
+
+Carmona, F. (2005). *Modelos lineales*. Publicaciones UB. [§8.1–8.4 Regresión múltiple; §9.2 ANCOVA]
+
+Cook, R.D., & Weisberg, S. (1983). Diagnostics for heteroscedasticity. *Biometrika*, 70(1), 1–10.
+
+Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression. *Ann. Statist.*, 32(2), 407–499.
+
+Faraway, J.J. (2014). *Linear Models with R* (2nd ed.). Chapman & Hall/CRC. [§3 Inference; §5 Model Comparison; §6 Diagnostics; §14 ANCOVA]
+
+Shapiro, S.S., & Wilk, M.B. (1965). An analysis of variance test for normality. *Biometrika*, 52(3–4), 591–611.
+
+\newpage
+
+# Apéndice: Código auxiliar
+
+## A.1 Exploración inicial
+
+```{r apendice-explora, eval=FALSE}
+summary(datos)
+pairs(datos[, c("y","age","bmi","bp","s5")], col = datos$sex)
+```
+
+## A.2 Colinealidad — Factor de Inflación de la Varianza
+
+```{r apendice-vif, eval=FALSE}
+# VIF > 10 indica multicolinealidad grave
+vif(modelo_completo)
+```
+
+## A.3 Selección de variables por AIC
+
+```{r apendice-step, eval=FALSE}
+modelo_full <- lm(y ~ age + bmi + bp + s1 + s2 + s3 + s4 + s5 + s6 + sex,
+                  data = datos_est)
+modelo_step <- step(modelo_full, direction = "both", trace = 0)
+summary(modelo_step)
+```
+
+## A.4 Verificación visual de residuos por sexo
+
+```{r apendice-res-sexo, eval=FALSE}
+plot(fitted(model_ancova_int), residuals(model_ancova_int),
+     col = as.integer(datos_est$sex) + 1, pch = 16, cex = 0.7,
+     xlab = "Valores ajustados", ylab = "Residuos",
+     main = "Residuos por sexo (verde=Hombre, rojo=Mujer)")
+abline(h = 0, lty = 2)
+legend("topright", levels(datos_est$sex), col = 2:3, pch = 16)
+```

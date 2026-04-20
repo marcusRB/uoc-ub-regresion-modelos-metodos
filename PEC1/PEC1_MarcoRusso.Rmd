@@ -1,5 +1,5 @@
 ---
-title: 'PEC1: Regresión, modelos y métodos'
+title: 'PEC1 - Regresión, modelos y métodos'
 author: "Marco Russo"
 date: "`r format(Sys.Date(), '%B, %Y')`"
 output:
@@ -85,163 +85,309 @@ knitr::opts_chunk$set(
 ```
 
 
-# PEC1: Regresión lineal con datos de diabetes
 
-**Autor:** Estudiante  
-**Fecha:** 18 de abril de 2026  
-**Asignatura:** Modelos Lineales  
-**Dataset:** Diabetes de Efron et al. (2004)
+```{r paquetes, include=FALSE}
+# Carga de los paquetes necesarios
+paquetes <- c("lmtest", "car", "MASS", "ggplot2", "knitr", "kableExtra", "dplyr")
+for (p in paquetes) {
+  if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
+}
+library(lmtest)   # Breusch-Pagan
+library(car)      # ncvTest, vif
+library(MASS)     # studres
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+```
 
----
 
 ## Introducción
 
-En esta actividad se analiza un conjunto de datos de 442 pacientes diabéticos. La variable respuesta es la **progresión de la diabetes** un año después del inicio del estudio (`y`). Como predictores se dispone de 10 variables basales: edad (`age`), sexo (`sex`, 1: mujer, 2: hombre), índice de masa corporal (`bmi`), presión arterial media (`bp`) y seis mediciones de suero sanguíneo (`s1` a `s6`). Los datos están disponibles en la URL indicada.
+En esta actividad se analiza un conjunto de datos de 442 pacientes que patecen diabets. La variable respuesta es la **progresión de la diabetes** un año después del inicio del estudio (`y`).
+
+Los diez predictores basales son:
+
+- **Variables demográficas y clínicas:** edad (`age`), sexo (`sex`, 1 = Mujer, 2 = Hombre), índice de masa corporal (`bmi`) y presión arterial media (`bp`).
+- **Variables bioquímicas de suero:** `s1` (colesterol total), `s2` (LDL), `s3` (HDL), `s4` (colesterol total/HDL), `s5` (log de triglicéridos séricos) y `s6` (glucosa).
 
 El objetivo es construir modelos de regresión lineal, verificar sus supuestos y realizar inferencia. Se presta especial atención a la **estandarización** de las variables y al tratamiento del sexo como **factor** (categórico).
 
-A continuación se resuelven los ejercicios planteados, con código R, resultados e interpretación apoyada en la teoría de los módulos de regresión lineal simple y múltiple, así como de diagnóstico del modelo.
+El objetivo es construir y evaluar modelos de **regresión lineal múltiple** (y ANCOVA), verificar sus supuestos y realizar inferencia estadística formal. Todo el análisis se apoya en la teoría de los módulos de la asignatura (Carmona, 2005; Faraway, 2014).
 
----
+> **Referencia bibliográfica principal:** Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression. *The Annals of Statistics*, 32(2), 407–499.
+
+***
 
 ## Ejercicio 0: Estandarización de los datos (10 pt.)
 
 ### (0.1) Modelo con sexo como factor
 
-Incluir el sexo como **factor** junto a covariables continuas (bmi, bp, etc.) define un **modelo ANCOVA** (Análisis de Covarianza). Formalmente:
+Cuando incluimos la variable **sexo como factor** junto a covariables continuas como el IMC o la presión arterial, estamos construyendo un **modelo ANCOVA** (*Analysis of Covariance*).
 
-\[
-y_i = \beta_0 + \beta_1 \cdot \text{bmi}_i + \beta_2 \cdot \text{bp}_i + \cdots + \gamma \cdot \text{sex}_i + \varepsilon_i
-\]
+El ANCOVA es un modelo de regresión que combina variables continuas (covariables) con al menos un factor categórico. Formalmente, para el sujeto $i$:
 
-donde `sex_i` es una variable indicadora (0 para mujer, 1 para hombre). Este modelo permite que el intercepto difiera entre sexos, mientras que las pendientes de las covariables se asumen comunes (efectos aditivos). La interpretación de \(\gamma\) es la **diferencia media en la respuesta** entre hombres y mujeres, manteniendo constantes las demás covariables.
+$$
+y_i = \beta_0 + \beta_1 \cdot \text{bmi}_i + \beta_2 \cdot \text{bp}_i + \cdots + \gamma \cdot \mathbf{1}[\text{sex}_i = \text{Hombre}] + \varepsilon_i
+$$
 
-### (0.2) Consecuencias de tratar sexo como numérica estandarizada
+donde:
 
-Si se mantiene `sex` como una variable numérica (1 y 2) y se estandariza, se fuerza una relación lineal artificial entre la respuesta y el sexo. Las consecuencias son:
+- $\beta_0$ es el intercepto para la categoría de referencia (Mujer),
+- $\gamma$ representa la **diferencia media** en la progresión entre hombres y mujeres, controlando por las demás covariables,
+- $\mathbf{1}[\cdot]$ es la función indicadora (variable *dummy*): vale 1 si el paciente es hombre y 0 si es mujer.
 
-1. **Interpretación errónea:** El coeficiente de sexo no representaría una diferencia entre categorías, sino el efecto de un incremento de una unidad en una escala sin significado biológico.
-2. **Pérdida de flexibilidad:** No se puede capturar una posible interacción entre sexo y otras covariables de manera natural.
-3. **Estimación sesgada:** Si la relación no es lineal en la escala numérica, el modelo puede producir predicciones incorrectas.
+Este modelo impone pendientes paralelas para las covariables continuas en ambos grupos sexuales (efecto aditivo), mientras que el intercepto difiere entre grupos. Si se añade un término de interacción $\gamma_2 \cdot \text{bmi}_i \times \mathbf{1}[\text{Hombre}]$, se permite que las pendientes también difieran.
 
-Por tanto, **es obligatorio tratar el sexo como factor** para un análisis estadístico clásico.
+## (0.2) Consecuencias de no convertir el sexo a factor
 
-### (0.3) Estandarización y preparación de los datos
+Si el sexo se mantiene como variable numérica (con valores 1 y 2) y se estandariza, el modelo asume que existe una **relación lineal artificial** entre el sexo y la respuesta. Hay unas consecuencias que implican también unas interpretaciones erróneas:
 
-Estandarizamos las variables cuantitativas (centrar y escalar por la desviación típica muestral) para que tengan media 0 y desviación 1. Esto facilita la interpretación de los coeficientes y la comparación de la importancia relativa de los predictores. El sexo se convierte en factor con niveles "Mujer" y "Hombre".
+1. **Interpretación errónea del coeficiente.** El coeficiente de `sex` representaría el efecto de un incremento de una unidad en una escala sin significado biológico real, en lugar de la diferencia categórica entre sexos. Esto es estadísticamente incorrecto para una variable nominal.
 
-```r
-# Cargar datos desde la URL
-url <- "https://web.stanford.edu/~hastie/Papers/LARS/diabetes.data"
-datos_originales <- read.table(url, header = TRUE, row.names = 1)
+2. **Pérdida de flexibilidad.** Al tratarlo como numérico, se fuerza la misma distancia en la respuesta entre las categorías 1,2 que entre cualquier otro incremento unitario. No se pueden modelar naturalmente posibles interacciones con otras covariables.
 
-# Ver estructura
-str(datos_originales)
+3. **Estimación potencialmente sesgada.** Si la relación verdadera no es lineal en la escala numérica codificada, el modelo puede producir predicciones sesgadas e intervalos de confianza inválidos.
 
-# Convertir sexo a factor (1 -> Mujer, 2 -> Hombre)
-datos_originales$sex <- factor(datos_originales$sex,
-                               levels = c(1,2),
-                               labels = c("Mujer", "Hombre"))
+> Por lo tanto, es obligatorio tratar el sexo como variable categórica (`factor`) en cualquier análisis de regresión clásico que aspire a ser correcto en términos estadísticos e interpretable en términos biológicos. (Carmona, 2005, §8.4; Faraway, 2014, §14.1).
 
-# Estandarizar las variables cuantitativas (excepto sex y respuesta)
-vars_cuant <- c("age", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6")
-datos_est <- datos_originales
-for (v in vars_cuant) {
-  datos_est[[v]] <- scale(datos_originales[[v]], center = TRUE, scale = TRUE)
-}
-# La respuesta y no se estandariza (se mantiene en unidades originales)
+## (0.3) Estandarización y preparación de los datos
 
-# Ver primeras filas
-head(datos_est)
+La estandarización (*z-score*) transforma cada variable cuantitativa $x_j$ en:
+
+$$
+z_{ij} = \frac{x_{ij} - \bar{x}_j}{s_j}
+$$
+
+donde $\bar{x}_j$ es la media muestral y $s_j$ la desviación típica muestral. El resultado tiene **media 0** y **desviación típica 1**, lo que facilita la comparación de la magnitud de los coeficientes y mejora la estabilidad numérica.
+
+La variable respuesta $y$ **no** se estandariza para conservar la interpretabilidad de los coeficientes en las unidades originales de progresión de la diabetes.
+
+```{r carga-datos}
+# Carga de datos originales
+url   <- "https://web.stanford.edu/~hastie/Papers/LARS/diabetes.data"
+datos <- read.table(url, header = TRUE)
+
+# Normalizar nombres a minúsculas
+names(datos) <- tolower(names(datos))
+
+# Vista rápida de la estructura
+str(datos)
 ```
 
-A partir de ahora trabajamos con `datos_est`.
+```{r estandarizacion}
+# Conversión de sexo a factor
+datos$sex <- factor(datos$sex,
+                    levels = c(1, 2),
+                    labels = c("Mujer", "Hombre"))
 
----
+# Estandarización de variables cuantitativas (excepto y)
+vars_cont <- c("age", "bmi", "bp", "s1", "s2", "s3", "s4", "s5", "s6")
+
+datos_est           <- datos
+datos_est[, vars_cont] <- scale(datos[, vars_cont])
+
+# Verificación: medias ≈ 0, sd ≈ 1
+round(colMeans(datos_est[, vars_cont]), 8)
+round(apply(datos_est[, vars_cont], 2, sd), 8)
+```
+
+```{r resumen-y}
+# Estadísticos descriptivos de la respuesta
+cat("Media de y:", round(mean(datos_est$y), 4), "\n")
+cat("D.T.   de y:", round(sd(datos_est$y), 4), "\n")
+cat("Rango  de y:", range(datos_est$y), "\n")
+```
+
+A partir de ahora trabajaremos exclusivamente con **`datos_est`** (datos estandarizados, sexo como factor).
+
+\newpage
+
+***
 
 ## Ejercicio 1: Formulación, estimación y significación global (30 pt.)
 
 ### (1.1) Modelo con edad, bmi y bp
 
-Modelo lineal múltiple:
+Se propone el siguiente **modelo de regresión lineal múltiple** (modelo1):
 
-\[
-y_i = \beta_0 + \beta_1 \cdot \text{age}_i + \beta_2 \cdot \text{bmi}_i + \beta_3 \cdot \text{bp}_i + \varepsilon_i, \quad i=1,\dots,442
-\]
+$$
+\boxed{y_i = \beta_0 + \beta_1 \cdot \text{age}_i^* + \beta_2 \cdot \text{bmi}_i^* + \beta_3 \cdot \text{bp}_i^* + \varepsilon_i, \quad i = 1, \ldots, 442}
+$$
 
 donde:
-- \(y_i\) = progresión de la diabetes (variable cuantitativa continua).
-- \(\text{age}_i\) = edad estandarizada.
-- \(\text{bmi}_i\) = índice de masa corporal estandarizado.
-- \(\text{bp}_i\) = presión arterial media estandarizada.
-- \(\beta_0\) es el intercepto, \(\beta_1,\beta_2,\beta_3\) los coeficientes de regresión.
-- \(\varepsilon_i \sim \text{i.i.d. } N(0,\sigma^2)\) bajo el modelo normal.
+- $y_i$ = progresión de la diabetes (variable cuantitativa continua).
+- $\text{age}_i$ = edad estandarizada.
+- $\text{bmi}_i$ = índice de masa corporal estandarizado.
+- $\text{bp}_i$ = presión arterial media estandarizada.
+- $\beta_0$ es el intercepto, $\beta_1,\beta_2,\beta_3$ los coeficientes de regresión.
+- $\varepsilon_i \sim \text{i.i.d. } N(0,\sigma^2)$ bajo el modelo normal.
+
+
+En notación matricial, el modelo se expresa como:
+
+$$
+\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim \mathcal{N}_n(\mathbf{0}, \sigma^2 \mathbf{I}_n)
+$$
+
+donde $\mathbf{X}$ es la matriz de diseño $(442 \times 4)$ con una columna de unos para el intercepto y tres columnas de predictores estandarizados.
+
+***
 
 ### (1.2) Comportamiento del intercepto con variables estandarizadas
 
-Cuando todas las variables predictoras cuantitativas se han estandarizado (media 0), el intercepto estimado \(\hat{\beta}_0\) coincide con la **media muestral de la respuesta** (\(\bar{y}\)). Esto se debe a que la recta de regresión pasa por el punto \((\bar{\mathbf{x}}, \bar{y})\) y al estar \(\bar{\mathbf{x}} = \mathbf{0}\), la ecuación \(y = \beta_0 + \beta_1 x_1 + \dots\) se reduce a \(y = \beta_0\) en el centro. Así, \(\hat{\beta}_0 = \bar{y}\). (Ver módulo "Regresión lineal múltiple", sección 8.1.)
+Cuando todas las variables predictoras cuantitativas se han estandarizado (media 0), el intercepto estimado $\hat{\beta}_0$ coincide con la **media muestral de la respuesta** ($\bar{y}$). Esto se debe a que la recta de regresión pasa por el punto $(\bar{\mathbf{x}}, \bar{y})$ y al estar $\bar{\mathbf{x}} = \mathbf{0}$, la ecuación $y = \beta_0 + \beta_1 x_1 + \dots$ se reduce a $y = \beta_0$ en el centro. Así, $\hat{\beta}_0 = \bar{y}$.
+
+
+Para poder demostrar eso, el estimador MCO verifica las ecuaciones normales. En particular:
+
+$$
+\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \bar{x}_1^* - \hat{\beta}_2 \bar{x}_2^* - \hat{\beta}_3 \bar{x}_3^*
+$$
+Como las variables han sido estandarizadas, $\bar{x}_j^* = 0$ para todo $j$. Por tanto:
+
+$$
+\hat{\beta}_0 = \bar{y} - \hat{\beta}_1 \cdot 0 - \hat{\beta}_2 \cdot 0 - \hat{\beta}_3 \cdot 0 = \bar{y}
+$$
+
+Esta propiedad es una consecuencia directa de que el **hiperplano de regresión pasa por el punto $(\bar{\mathbf{x}}, \bar{y})$** (Carmona, 2005, §8.1). En nuestro caso, el intercepto estimado deberá ser igual a la media muestral de $y$, que es aproximadamente $\bar{y} \approx 152.13$.
+
+Su interpretación más sintáctica, sería el equiavalente de que el intercepto representa la progresión media esperada de la diabetes para un paciente con edad, IMC y presión arterial en sus valores medios poblacionales.
+
+***
 
 ### (1.3) Verificación de las condiciones de Gauss‑Markov
 
 Las condiciones de Gauss‑Markov son:
 
-1. **Linealidad**: \(E(y_i) = \beta_0 + \beta_1 x_{i1} + \dots\).
+1. **Linealidad**: $E(y_i) = \beta_0 + \beta_1 x_{i1} + \dots$.
 2. **Independencia**: los errores son independientes.
-3. **Homocedasticidad**: \(\text{var}(\varepsilon_i) = \sigma^2\) constante.
-4. **Media cero**: \(E(\varepsilon_i)=0\).
+3. **Homocedasticidad**: $\text{var}(\varepsilon_i) = \sigma^2$ constante.
+4. **Media cero**: $E(\varepsilon_i)=0$.
 
-Es necesario validarlas porque si no se cumplen, los estimadores MCO pueden ser sesgados o ineficientes, y la inferencia (intervalos, tests) será inválida. En este ejercicio solo se pide **verificar**; en el ejercicio 4 se harán pruebas diagnósticas. De momento, se asumen razonablemente ciertas para el modelo1.
+Es necesario validarlas porque si no se cumplen, los estimadores MCO pueden ser sesgados o ineficientes, y la inferencia (intervalos, tests) será inválida.
+
+Las cuatro condiciones serían:
+
+**1. Linealidad del modelo:**
+$$E(y_i \mid \mathbf{x}_i) = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \beta_3 x_{i3}$$
+La relación entre la respuesta media y los predictores debe ser lineal en los parámetros. Se verifica preliminarmente con gráficos de residuos vs. valores ajustados (Ejercicio 4).
+
+**2. Independencia de los errores:**
+$$\text{Cov}(\varepsilon_i, \varepsilon_j) = 0 \quad \forall\, i \neq j$$
+Dado que los pacientes son individuos distintos en un estudio transversal, esta condición es razonable. No hay estructura temporal ni espacial que la amenace.
+
+**3. Homocedasticidad:**
+$$\text{Var}(\varepsilon_i) = \sigma^2 \quad \forall\, i$$
+La varianza de los errores debe ser constante e independiente de los valores de los predictores. Se comprobará formalmente con tests estadísticos en el Ejercicio 4.
+
+**4. Media cero de los errores:**
+$$E(\varepsilon_i) = 0 \quad \forall\, i$$
+Esta condición está garantizada por la inclusión del término independiente $\beta_0$ en el modelo, siempre que el modelo esté correctamente especificado.
+
+> Si alguna de estas condiciones no se cumple, los estimadores MCO pierden sus propiedades óptimas. En particular, la heterocedasticidad no introduce sesgo pero sí ineficiencia y hace que los errores estándar e intervalos de confianza sean incorrectos. La no linealidad o la falta de media cero implican sesgo en los estimadores. La inferencia (tests $t$ y $F$) requiere adicionalmente **normalidad** de los errores, que se verificará con el test de Shapiro-Wilk en el Ejercicio 4.
+
+***
 
 ### (1.4) Estimación de los parámetros
 
 Ajustamos el modelo1 por MCO:
 
-```r
+```{r}
 modelo1 <- lm(y ~ age + bmi + bp, data = datos_est)
 summary(modelo1)
 ```
 
-**Salida resumida** (aproximada):
+La ecuación del modelo:
 
-```
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) 152.1335     2.9740  51.152  < 2e-16 ***
-age          -8.8301     3.3984  -2.598  0.00971 ** 
-bmi         528.9973    30.4952  17.349  < 2e-16 ***
-bp          187.0894    31.1067   6.014  3.42e-09 ***
----
-Residual standard error: 62.53 on 438 degrees of freedom
-Multiple R-squared:  0.4225,	Adjusted R-squared:  0.4185 
-F-statistic: 106.8 on 3 and 438 DF,  p-value: < 2.2e-16
-```
-
-Ecuación del modelo:
-
-\[
-\hat{y} = 152.13 - 8.83 \cdot \text{age} + 529.00 \cdot \text{bmi} + 187.09 \cdot \text{bp}
-\]
+$$
+\hat{y} = 152.13 + 1.24 \cdot \text{age} + 37.6 \cdot \text{bmi} + 18.77 \cdot \text{bp}
+$$
 
 ### (1.5) Contraste de significación global
 
-- **Hipótesis nula**: \(H_0: \beta_1 = \beta_2 = \beta_3 = 0\) (ningún predictor es útil, el modelo no explica nada).
-- **Hipótesis alternativa**: \(H_1:\) al menos un \(\beta_j \neq 0\).
+- **Hipótesis nula**: $H_0: \beta_1 = \beta_2 = \beta_3 = 0$ (ningún predictor es útil, el modelo no explica nada).
+- **Hipótesis alternativa**: $H_1:$ al menos un $\beta_j \neq 0$.
 
 El estadístico de prueba es
 
-\[
+$$
 F = \frac{(SCR_H - SCR)/k}{SCR/(n-k-1)} = \frac{R^2/k}{(1-R^2)/(n-k-1)} \sim F_{k,\, n-k-1}
-\]
+$$
 
-donde \(k=3\) y \(n=442\). Bajo \(H_0\), \(F\) sigue una distribución \(F\) con 3 y 438 grados de libertad.
+donde $k=3$ y $n=442$. Bajo $H_0$, $F$ sigue una distribución $F$ con 3 y 438 grados de libertad.
+
+El contraste de significación global evalúa si el modelo en su conjunto tiene poder explicativo sobre la variable respuesta.
+
+**Hipótesis:**
+$$
+H_0: \beta_1 = \beta_2 = \beta_3 = 0 \qquad \text{(ningún predictor es útil)}
+$$
+$$
+H_1: \exists\, j \in \{1,2,3\} \text{ tal que } \beta_j \neq 0 \qquad \text{(al menos un predictor es útil)}
+$$
+
+**Estadístico de prueba:** El test se basa en la descomposición de la variabilidad total ($\text{SCT}$) en variabilidad explicada por el modelo ($\text{SCM}$) y variabilidad residual ($\text{SCR}$):
+$$
+\text{SCT} = \text{SCM} + \text{SCR}, \quad \text{con} \quad \text{SCT} = \sum_{i=1}^n (y_i - \bar{y})^2
+$$
+
+El estadístico $F$ compara la variabilidad media explicada con la variabilidad media residual:
+
+$$
+F = \frac{\text{SCM}/k}{\text{SCR}/(n-k-1)} = \frac{\text{CMM}}{\text{CMR}}
+$$
+
+donde $k = 3$ es el número de predictores y $n = 442$. **Bajo $H_0$**, este estadístico sigue una distribución:
+$$
+F \sim \mathcal{F}_{k,\, n-k-1} = \mathcal{F}_{3,\, 438}
+$$
+
+Existe una relación directa con el coeficiente de determinación $R^2$:
+$$
+F = \frac{R^2 / k}{(1-R^2)/(n-k-1)}
+$$
+
+```{r ftest-global}
+# Tabla ANOVA del modelo
+anova_modelo1 <- anova(modelo1)
+print(anova_modelo1)
+
+# Extracción del estadístico F y p-valor del summary
+s1 <- summary(modelo1)
+cat(sprintf("\nF-estadístico: %.2f con %d y %d g.l.  |  p-valor: %.2e\n",
+            s1$fstatistic[1], s1$fstatistic[2], s1$fstatistic[3],
+            pf(s1$fstatistic[1], s1$fstatistic[2], s1$fstatistic[3],
+               lower.tail = FALSE)))
+```
+
 
 ### (1.6) Significatividad y bondad del modelo
 
-Con \(F = 106.8\) y \(p\text{-valor} < 2.2\cdot10^{-16}\), se **rechaza** \(H_0\) al nivel \(\alpha=0.05\). El modelo es globalmente significativo.
+Con $F = 95.81$ y $p\text{-valor} < 2.2\cdot10^{-16}$, se **rechaza** $H_0$ al nivel $\alpha=0.05$. El modelo es globalmente significativo.
 
-Sin embargo, **no es un buen modelo** porque el \(R^2\) ajustado es solo 0.4185. Esto significa que solo el 41.8% de la variabilidad de la progresión de la diabetes es explicada por edad, bmi y bp. Existe una gran parte no explicada; es necesario incorporar más predictores (como las variables de suero) o considerar transformaciones/interacciones.
+Sin embargo, **no es un buen modelo** porque el $R^2$ ajustado es solo 0.392. Esto significa que solo el 39.2% de la variabilidad de la progresión de la diabetes es explicada por edad, bmi y bp. Existe una gran parte no explicada; es necesario incorporar más predictores (como las variables de suero) o considerar transformaciones/interacciones.
 
----
+```{r bondad-ajuste}
+cat("R² =", round(s1$r.squared, 4), "\n")
+cat("R² ajustado =", round(s1$adj.r.squared, 4), "\n")
+cat("Error estándar residual =", round(s1$sigma, 4), "\n")
+```
+
+**Decisión sobre la significación global:**
+
+Con $F \approx 95.8$ y $p\text{-valor} < 2.2 \times 10^{-16} \ll \alpha = 0.05$, se **rechaza $H_0$** con contundencia. El modelo es **globalmente significativo**: al menos uno de los predictores (edad, IMC o BP) tiene una relación lineal real con la progresión de la diabetes.
+
+Entonces no podemos definirlo como un buen modelo de manera absoluta. Aunque es estadísticamente significativo, debemos evaluar la bondad del ajuste:
+
+- $R^2 \approx 0.396$: El modelo explica solo el **39.6%** de la variabilidad total de la progresión de la diabetes. Esto deja un 60.4% sin explicar.
+- $R^2_{\text{adj}} \approx 0.392$: El ajuste por grados de libertad confirma el resultado.
+- El error estándar residual ($\hat{\sigma} \approx 60$) es considerable en relación con el rango de $y$ (~25 a 346).
+
+> **Referencia:** Carmona (2005, §8.2) señala que la significación estadística global no implica bondad del ajuste: un modelo puede ser significativo con $R^2$ bajo si la muestra es grande, como ocurre aquí ($n = 442$).
+
+
+***
 
 ## Ejercicio 2: Inferencia sobre parámetros y comparación de modelos (20 pt.)
 
@@ -249,43 +395,31 @@ Sin embargo, **no es un buen modelo** porque el \(R^2\) ajustado es solo 0.4185.
 
 Observamos los p‑valores individuales del `summary`:
 
-- `age`: p = 0.00971 → significativo al 5%.
-- `bmi`: p < 2e-16 → muy significativo.
-- `bp`: p = 3.42e-09 → muy significativo.
+- `age`: p = 0.685 mayor del 5%.
+- `bmi`: p < 2e-16 el que es muy significativo.
+- `bp`: p = 1.56e-0 el que es muy significativo.
 
-Todos los predictores son estadísticamente significativos. Por tanto, **no se puede prescindir de ninguno** manteniendo el nivel de significación del 5%.
+Todos los predictores son estadísticamente significativos a excepción del `age`. Por tanto, **se puede prescindir de age** manteniendo el nivel de significación del 5%. Excluyendo `age` solo podría pensar que se trata de modelo simple y podríamos tener colinealidad parcial con bmi y bp.
 
 ### (2.2) Predictor más influyente
 
-La influencia de cada predictor puede evaluarse mediante los **coeficientes estandarizados** (que son directamente los \(\hat{\beta}_j\) porque las variables ya están estandarizadas). También mediante el valor absoluto del estadístico \(t\) o el incremento en \(R^2\) al añadirlo.
+La influencia de cada predictor puede evaluarse mediante los **coeficientes estandarizados** (que son directamente los $\hat{\beta}_j$ porque las variables ya están estandarizadas). También mediante el valor absoluto del estadístico $t$ o el incremento en $R^2$ al añadirlo.
 
 Los coeficientes (en unidades de desviación típica de la respuesta por desviación típica del predictor) son:
 
-- `bmi`: 529.0
-- `bp`: 187.1
-- `age`: -8.83
+* age:  1.238  (t = 0.407,  p = 0.685)
+* bmi: 37.561  (t = 12.031, p < 2e-16)
+* bp:  18.768  (t = 5.763,  p = 1.56e-08)
 
-En magnitud, `bmi` tiene el coeficiente más grande y el mayor valor \(t\) (17.35), seguido de `bp` (6.01) y `age` (2.60). Por tanto, **el IMC es el predictor más influyente** en el modelo1.
+En magnitud, `bmi` tiene el coeficiente más grande y el mayor valor $t$ (17.35), seguido de `bp` (6.01) y `age` (2.60). Por tanto, **el IMC es el predictor más influyente** en el modelo1.
 
 ### (2.3) Discusión sobre el valor añadido de las variables de suero
 
 El investigador afirma que, conocidos bmi y bp, las seis mediciones de suero no aportan información adicional. Para evaluarlo, comparamos el modelo1 con un modelo que incluya además `s1` a `s6`. Se trata de modelos **anidados**. Realizamos un test F parcial:
 
-```r
+```{r}
 modelo_completo <- lm(y ~ age + bmi + bp + s1 + s2 + s3 + s4 + s5 + s6, data = datos_est)
 anova(modelo1, modelo_completo)
-```
-
-**Resultado** (valores típicos):
-
-```
-Analysis of Variance Table
-
-Model 1: y ~ age + bmi + bp
-Model 2: y ~ age + bmi + bp + s1 + s2 + s3 + s4 + s5 + s6
-  Res.Df    RSS Df Sum of Sq      F    Pr(>F)    
-1    438 1.712e6                                  
-2    432 1.121e6  6    591015 37.97 < 2.2e-16 ***
 ```
 
 El p‑valor es extremadamente pequeño → **se rechaza la hipótesis de que los coeficientes de las variables de suero sean todos cero**. Por tanto, las mediciones de suero sí aportan información relevante. La mejor solución es incluir **todas las variables** o, al menos, un subconjunto seleccionado (por ejemplo, mediante stepwise). Un modelo con todas las 10 variables explicativas es más adecuado.
@@ -295,13 +429,13 @@ El p‑valor es extremadamente pequeño → **se rechaza la hipótesis de que lo
 La comparación de modelos anidados se basa en el **test F parcial** o **análisis de la varianza (ANOVA)**. Puntos clave:
 
 1. **Modelo reducido** (hipótesis nula) y **modelo completo** (alternativa).
-2. La suma de cuadrados de la regresión se descompone: \(SCR_H = SCR + (SCR_H - SCR)\).
-3. El estadístico \(F = \frac{(SCR_H - SCR)/q}{SCR/(n-p)}\) sigue una distribución \(F\) con \(q\) y \(n-p\) grados de libertad, donde \(q\) es el número de parámetros adicionales.
-4. Si \(F\) es grande (p-valor pequeño), se rechaza el modelo reducido, concluyendo que los predictores añadidos mejoran significativamente el ajuste.
+2. La suma de cuadrados de la regresión se descompone: $SCR_H = SCR + (SCR_H - SCR)$.
+3. El estadístico $F = \frac{(SCR_H - SCR)/q}{SCR/(n-p)}$ sigue una distribución $F$ con $q$ y $n-p$ grados de libertad, donde $q$ es el número de parámetros adicionales.
+4. Si $F$ es grande (p-valor pequeño), se rechaza el modelo reducido, concluyendo que los predictores añadidos mejoran significativamente el ajuste.
 
 Referencia: Módulo "Regresión lineal múltiple", sección 8.3 (Significación parcial).
 
----
+***
 
 ## Ejercicio 3: Modelo ANCOVA (20 pt.)
 
@@ -309,85 +443,63 @@ Referencia: Módulo "Regresión lineal múltiple", sección 8.3 (Significación 
 
 Ajustamos un modelo que incluye `bmi`, `s5` (por ser los dos predictores que los médicos consideran potentes) y el factor `sex`. Inicialmente, un modelo sin interacción:
 
-\[
+$$
 y_i = \beta_0 + \beta_1 \cdot \text{bmi}_i + \beta_2 \cdot \text{s5}_i + \gamma \cdot \text{sex}_i + \varepsilon_i
-\]
+$$
 
-```r
+```{r}
 modelo_ancova <- lm(y ~ bmi + s5 + sex, data = datos_est)
 summary(modelo_ancova)
 ```
 
 El coeficiente de `sexHombre` indica la diferencia media entre hombres y mujeres. Si su p‑valor es < 0.05, hay diferencias significativas.
 
-**Salida típica** (basada en los datos originales):
-
-```
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) 107.1638     4.1388  25.887  < 2e-16 ***
-bmi         539.5216    25.9799  20.763  < 2e-16 ***
-s5          217.6413    27.0892   8.035  5.3e-15 ***
-sexHombre    41.5083     5.3383   7.775  3.9e-14 ***
-```
-
-El p‑valor de `sex` es < 2e-16 → **existen diferencias significativas** entre hombres y mujeres, con los hombres mostrando una progresión media 41.5 unidades mayor que las mujeres, manteniendo constantes bmi y s5.
+El p‑valor de `sex` es < 2e-16 el que **no existen diferencias significativas** entre hombres y mujeres. El coeficiente es −8.000 por lo que los hombres muestran menos progresión, aunque no significativamente. Podríamos pensar que parte del aparente efecto del sexo estaba mediado por diferencias en IMC y triglicéridos entre sexos.
 
 ### (3.2) ¿El impacto del IMC es constante o varía con el sexo?
 
 Para responder introducimos la **interacción** entre `bmi` y `sex`:
 
-\[
+$$
 y_i = \beta_0 + \beta_1 \text{bmi}_i + \beta_2 \text{s5}_i + \gamma \text{sex}_i + \delta (\text{bmi}_i \cdot \text{sex}_i) + \varepsilon_i
-\]
+$$
 
-```r
+```{r}
 modelo_ancova_int <- lm(y ~ bmi * sex + s5, data = datos_est)
 summary(modelo_ancova_int)
 ```
 
-El término de interacción `bmi:sexHombre` indica si la pendiente del bmi difiere entre sexos. Si su p‑valor es significativo, el efecto del IMC no es constante.
+El coeficiente de bmi:sexHombre = +11.801 significa que la pendiente del IMC es mayor en hombres (27.36 + 11.80 = 39.16 vs. 27.36 en mujeres).
 
-**Resultado** (simulado):
+El p‑valor de la interacción es 0.0314 < 0.05, por lo que significa **que la interacción sí es significativa**. Por tanto, asumimos que la pendiente del IMC difiere entre sexos.
 
-```
-Coefficients:
-                Estimate Std. Error t value Pr(>|t|)    
-(Intercept)     108.1232     4.1563  26.015  < 2e-16 ***
-bmi             513.6472    30.7982  16.681  < 2e-16 ***
-s5              217.9012    27.0426   8.058  4.9e-15 ***
-sexHombre        47.2312     7.1254   6.628  7.2e-11 ***
-bmi:sexHombre    58.2344    42.3212   1.376    0.169
-```
-
-El p‑valor de la interacción es 0.169 > 0.05 → **no hay evidencia de que el impacto del IMC sea diferente entre sexos**. Por tanto, asumimos que la pendiente del IMC es constante (efecto aditivo).
 
 ### (3.3) Ecuación predictora para mujeres
 
 Para el subgrupo de mujeres, `sexHombre = 0`. La ecuación del modelo con interacción (aunque no significativa, se incluye para ilustrar) se reduce a:
 
-\[
+$$
 \hat{y}_{\text{mujer}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot \text{bmi} + \hat{\beta}_2 \cdot \text{s5}
-\]
+$$
 
 Con los coeficientes estimados:
 
-\[
-\hat{y}_{\text{mujer}} = 108.12 + 513.65 \cdot \text{bmi} + 217.90 \cdot \text{s5}
-\]
+$$
+\hat{y}_{\text{mujer}} = 155.43 + 27.36 \cdot \text{bmi} + 29.49 \cdot \text{s5}
+$$
 
 - **Intercepto** (108.12): valor predicho de la progresión cuando bmi y s5 son cero (valores medios, porque están estandarizados) para una mujer.
 - **Pendiente de bmi** (513.65): por cada incremento de una desviación típica en bmi, la progresión esperada aumenta en 513.65 unidades, manteniendo s5 constante.
 - **Pendiente de s5** (217.90): análogo para s5.
 - **Término de interacción** (58.23, no significativo): representa el cambio adicional en la pendiente del bmi para los hombres. Al no ser significativo, se puede omitir en la interpretación final.
 
----
+***
 
 ## Ejercicio 4: Diagnóstico del modelo ANCOVA con interacción (20 pt.)
 
 ### (4.1) Gráficos básicos de diagnóstico
 
-```r
+```{r}
 par(mfrow = c(2,2))
 plot(modelo_ancova_int)
 ```
@@ -410,7 +522,7 @@ plot(modelo_ancova_int)
 
 **Homocedasticidad** (dos tests):
 
-```r
+```{r}
 library(lmtest)
 bptest(modelo_ancova_int)        # Breusch-Pagan
 ncvTest(modelo_ancova_int)       # otra alternativa (car package)
@@ -423,11 +535,11 @@ ncvTest(modelo_ancova_int)       # otra alternativa (car package)
 
 **Normalidad**:
 
-```r
+```{r}
 shapiro.test(residuals(modelo_ancova_int))
 ```
 
-p ≈ 0.002 → se rechaza la normalidad de los errores.
+El valor de p = 0.027 < 0.05, por lo que se rechaza la normalidad.
 
 **Acciones correctivas**:
 
@@ -438,64 +550,74 @@ p ≈ 0.002 → se rechaza la normalidad de los errores.
 
 ### (4.3) Valores atípicos y puntos influyentes
 
-Del gráfico 4 (Residuals vs Leverage) y con:
 
-```r
-outlierTest(modelo_ancova_int)   # test de Bonferroni
-cooks.distance(modelo_ancova_int) %>% which(. > 1)
+```{r outliers-cook}
+n     <- nrow(datos_est)
+p_par <- length(coef(modelo_ancova_int))
+
+h_ii     <- hatvalues(modelo_ancova_int)
+cook_d   <- cooks.distance(modelo_ancova_int)
+rstud    <- rstudent(modelo_ancova_int)
+
+umbral_lev  <- 2 * p_par / n
+umbral_cook <- 4 / n
+
+obs_lev  <- which(h_ii > umbral_lev)
+obs_cook <- which(cook_d > umbral_cook)
+obs_rs   <- which(abs(rstud) > 3)
+
+cat(sprintf("Umbral leverage (2p/n = %.4f): %d observaciones\n",
+            umbral_lev, length(obs_lev)))
+cat(sprintf("Umbral Cook (4/n = %.4f): %d observaciones\n",
+            umbral_cook, length(obs_cook)))
+cat(sprintf("Residuos stud. externos |r*| > 3: %d observaciones\n",
+            length(obs_rs)))
+if (length(obs_rs) > 0) print(round(rstud[obs_rs], 3))
+
+# Gráfico de Cook
+plot(cook_d, type = "h",
+     col  = ifelse(cook_d > umbral_cook, "red", "steelblue"),
+     main = "Distancia de Cook",
+     xlab = "Índice de observación", ylab = expression(D[i]))
+abline(h = umbral_cook, col = "red",     lty = 2, lwd = 1.5)
+abline(h = 1,           col = "darkred", lty = 3, lwd = 1.5)
+obs_top <- head(order(cook_d, decreasing = TRUE), 5)
+text(obs_top, cook_d[obs_top], labels = obs_top,
+     pos = 3, cex = 0.7, col = "red")
+legend("topright", c("D > 4/n (umbral suave)", "D > 1 (umbral estricto)"),
+       col = c("red","darkred"), lty = c(2,3), cex = 0.8)
 ```
 
-No se observan puntos con distancia de Cook > 1. Sin embargo, puede haber algún residuo studentizado externo con valor absoluto > 3. Si se detectaran, se podría:
+- **Leverage elevado:** Hay observaciones con $h_{ii} > 2p/n$ (criterio de Huber). Estas observaciones tienen posiciones extremas en el espacio de predictores pero no son necesariamente problemáticas si sus residuos son pequeños.
 
-1. **Verificar los datos originales** por posibles errores de medición.
-2. **Realizar el análisis excluyendo** el punto influyente y comparar los coeficientes.
-3. **Utilizar métodos robustos** que reduzcan la influencia de esos puntos.
+- **Distancia de Cook:** Ninguna observación supera el umbral estricto $D_i > 1$ (criterio de Cook). Con el umbral conservador $D_i > 4/n$, hay algunas observaciones con influencia moderada — en particular las observaciones etiquetadas en el gráfico Residuos vs. Leverage (290, 305, 360).
 
-En este conjunto de datos no se detectan puntos extremadamente problemáticos.
+- **Residuos studentizados externos:** Si no hay observaciones con $|r_i^*| > 3$, no hay *outliers* extremos formales.
 
----
+**Protocolo de actuación:**
 
-## Apéndice: Código R completo (resumido)
+1. **Verificar los datos originales** de las observaciones sospechosas: ¿hay errores de registro o medición?
+2. **Análisis de sensibilidad:** reajustar el modelo sin las observaciones influyentes y comparar coeficientes. Si varían sustancialmente, la influencia es real.
+3. **No eliminar automáticamente:** un punto influyente puede ser una observación legítima que aporta información real sobre casos extremos. La eliminación solo está justificada ante errores de medición comprobados.
+4. **Regresión robusta** como alternativa: reduce automáticamente la influencia de los puntos extremos sin necesidad de eliminarlos.
 
-```r
-# Carga y preparación
-url <- "https://web.stanford.edu/~hastie/Papers/LARS/diabetes.data"
-datos <- read.table(url, header = TRUE, row.names = 1)
-datos$sex <- factor(datos$sex, levels = c(1,2), labels = c("Mujer","Hombre"))
-vars <- c("age","bmi","bp","s1","s2","s3","s4","s5","s6")
-datos[vars] <- scale(datos[vars])
+\newpage
 
-# Modelo1
-modelo1 <- lm(y ~ age + bmi + bp, data = datos)
-summary(modelo1)
-anova(modelo1)
+# Conclusión
 
-# Modelo completo
-modelo_completo <- lm(y ~ ., data = datos)
-anova(modelo1, modelo_completo)
+Se ha realizado un análisis completo de regresión lineal múltiple sobre los datos de diabetes de Efron et al. (2004):
 
-# Modelo ANCOVA
-modelo_ancova <- lm(y ~ bmi + s5 + sex, data = datos)
-modelo_ancova_int <- lm(y ~ bmi * sex + s5, data = datos)
-summary(modelo_ancova_int)
+- **Estandarización y tratamiento del sexo:** El sexo debe tratarse como factor para un análisis correcto. Con predictores estandarizados, $\hat{\beta}_0 = \bar{y} \approx 152.13$ (confirmado numéricamente).
 
-# Diagnóstico
-par(mfrow = c(2,2))
-plot(modelo_ancova_int)
-library(lmtest); library(car)
-bptest(modelo_ancova_int)
-ncvTest(modelo_ancova_int)
-shapiro.test(residuals(modelo_ancova_int))
-outlierTest(modelo_ancova_int)
-```
+- **Modelo1 (age + bmi + bp):** Globalmente significativo ($F = 95.81$, $p < 2.2 \times 10^{-16}$) pero con poder explicativo moderado ($R^2 = 0.396$). El **IMC** es el predictor más influyente ($|t| = 12.03$); la **edad no es significativa** ($p = 0.685$) en presencia de IMC y BP.
 
----
+- **Variables de suero:** El test $F$ parcial rechaza contundentemente que sean prescindibles ($p = 1.17 \times 10^{-15}$). Un modelo con los 9 predictores continuos es más adecuado.
 
-## Conclusión
+- **Modelo ANCOVA con interacción:** La interacción `bmi × sex` es **estadísticamente significativa** ($p = 0.031$). El efecto del IMC sobre la progresión es **mayor en hombres** (pendiente ~39.2) que en mujeres (pendiente ~27.4). Por otro lado, el efecto principal del sexo **no es significativo** ($p = 0.136$) al controlar por IMC y s5, posiblemente por efecto de confusión.
 
-Se ha realizado un análisis completo de regresión lineal sobre los datos de diabetes, desde la preparación y estandarización hasta la construcción de modelos ANCOVA y su diagnóstico. Los resultados muestran que el IMC y las variables de suero son predictores muy relevantes, que existe una diferencia significativa entre sexos (con mayor progresión en hombres) pero que el efecto del IMC no interacciona con el sexo. El modelo final presenta ciertos problemas de heterocedasticidad y no normalidad, que podrían corregirse con transformaciones. En general, el enfoque seguido es sólido y está basado en la teoría de los módulos de regresión lineal y diagnosis.
+- **Diagnóstico:** Ambos tests de homocedasticidad (Breusch-Pagan: $p \approx 0.003$; NCV: $p \approx 0.003$) detectan heterocedasticidad significativa. El test de Shapiro-Wilk indica desviación marginal de la normalidad ($p = 0.027$). Las acciones correctivas recomendadas son transformación Box-Cox, WLS o errores estándar robustos.
 
----
+***
 
 **Referencias**  
 - Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression. *The Annals of Statistics*, 32(2), 407-499.  
