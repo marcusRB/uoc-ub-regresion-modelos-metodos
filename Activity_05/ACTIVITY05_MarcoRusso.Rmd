@@ -1,5 +1,5 @@
 ---
-title: 'Activity05: Diagnosis'
+title: 'Activity05: Diagnósis'
 author: "Marco Russo"
 date: "`r format(Sys.Date(), '%B, %Y')`"
 output:
@@ -87,17 +87,9 @@ knitr::opts_chunk$set(
 
 # Ejercicios de Faraway
 
-## **Ejercicio 1**
+## **1. (Ejercicio 1 cap. 6 pág. 97)**
 
-A continuación se resuelve el **Ejercicio 1 cap. 6 pág. 97** del libro de Faraway 
-
-utilizan los paquetes `faraway`, `car`, `lmtest`, `MASS`, entre otros.
-
-```{r}
-
-```
-
-
+A continuación se resuelve el **Ejercicio 1 cap. 6 pág. 97** del libro de Faraway
 
 
 ```{r}
@@ -109,84 +101,92 @@ summary(mod_sat)
 
 ### (a) Varianza constante (homocedasticidad)
 
-```{r}
-plot(mod_sat, which = 1)  # residuos vs ajustados
+```{r ex1-a, fig.cap="Residuos vs Valores ajustados — SAT"}
+plot(mod_sat, which = 1)
 ```
 
-El gráfico muestra una nube de puntos sin forma de embudo ni tendencia clara. La línea roja es aproximadamente horizontal. No se detecta heterocedasticidad evidente.
+> El gráfico muestra una nube de puntos sin forma de embudo ni tendencia
+clara. La línea de ajuste es aproximadamente horizontal y no se detecta
+heterocedasticidad evidente.
 
 ### (b) Normalidad de los errores
 
-```{r}
+```{r ex1-b, fig.cap="QQ-plot — SAT"}
 qqnorm(residuals(mod_sat))
 qqline(residuals(mod_sat))
 shapiro.test(residuals(mod_sat))
 ```
 
-Los puntos en el QQ‑plot siguen bastante bien la línea recta. El test de Shapiro‑Wilk da un p‑valor > 0.05, por lo que no se rechaza la normalidad.
+> Los puntos en el QQ-plot siguen bastante bien la línea recta. El test de
+Shapiro-Wilk da $p-valor = 0.4304 > 0.05$, por lo que no se rechaza
+la normalidad.
 
 ### (c) Puntos de alto nivel (leverage)
 
-```{r}
-hii <- hatvalues(mod_sat)
+> En la versión original se usó un umbral de $0.4$. El umbral correcto es $2(p+1)/n = 2 \times 5 / 50 = \mathbf{0.2}$. Con ese umbral sí existen cuatro observaciones con leverage alto.
+
+```{r ex1-c}
 n <- nrow(sat)
+# Con 4 predictores
 p <- length(coef(mod_sat)) - 1
-umbral <- 2*(p+1)/n
-which(hii > umbral)
+
+# Umbral correcto: 2*(p+1)/n
+umbral_leverage <- 2 * (p + 1) / n
+cat("Umbral correcto:", round(umbral_leverage, 4), "\n")
+
+hii <- hatvalues(mod_sat)
+puntos_alto_nivel <- which(hii > umbral_leverage)
+puntos_alto_nivel
 ```
 
-El umbral es ≈ 0.4. Ningún punto supera ese valor. Los `hii` máximos son inferiores a 0.3. No hay puntos de alto nivel.
+```{r ex1-c-plot, fig.cap="Leverage — SAT"}
+plot(hii, type = "h", ylab = "Leverage (hii)", xlab = "Observación")
+abline(h = umbral_leverage, col = "red", lty = 2)
+text(puntos_alto_nivel, hii[puntos_alto_nivel],
+     labels = names(puntos_alto_nivel), pos = 3, cex = 0.7)
+```
+
+> Existen **cuatro observaciones** (California, Connecticut, New Jersey,
+Utah) con leverage superior al umbral $2(p+1)/n = 0.2$, lo que las
+identifica como **puntos de alto nivel**. Sin embargo, como la distancia
+de Cook y los residuos studentizados no muestran influencia excesiva, no
+es necesario eliminarlas a priori.
 
 ### (d) Valores atípicos (outliers)
 
-```{r}
-rstudent_mod <- rstudent(mod_sat)
-which(abs(rstudent_mod) > 2)
+```{r ex1-d}
+rstudent_sat <- rstudent(mod_sat)
+which(abs(rstudent_sat) > 2)
 ```
 
-Ningún residuo studentizado externamente supera 2 en valor absoluto. No hay outliers.
+> Existen 4 residuos studentizado que supera $|t| = 2$ en valor absoluto, los cuatro outliers identificados anteriormente.
 
 ### (e) Puntos influyentes (distancia de Cook)
 
-```{r}
-cooks <- cooks.distance(mod_sat)
-which(cooks > 1)  # o > 4/(n-p-1)
+```{r ex1-e}
+cooks_sat <- cooks.distance(mod_sat)
+which(cooks_sat > 1)
+cat("Cook máximo:", round(max(cooks_sat), 4), "\n")
 ```
 
-Todas las distancias de Cook son < 0.2. No hay puntos influyentes.
+> Todas las distancias de Cook son $< 0.5$: **no hay puntos influyentes**.
 
 ### (f) Estructura de la relación
 
-```{r}
-car::avPlots(mod_sat)  # gráficos de variable añadida
+```{r ex1-f, fig.cap="Added-Variable Plots — SAT", fig.height=5}
+car::avPlots(mod_sat)
 ```
 
-Los gráficos de variable añadida muestran relaciones lineales razonables para cada predictor. No se aprecian patrones no lineales claros.
+> Los gráficos de variable añadida muestran relaciones lineales razonables
+para cada predictor. No se aprecian patrones no lineales claros. **No es
+necesario aplicar correcciones al modelo SAT.**
 
-**Conclusión:** El modelo de SAT cump
+\newpage
 
-
-
----
-
-## 1. Ejercicio 1 – SAT data
-
-**Modelo:** `total ~ expend + salary + ratio + takers`
-
-```{r}
-library(faraway)
-data(sat)
-mod_sat <- lm(total ~ expend + salary + ratio + takers, data = sat)
-summary(mod_sat)
-```
-
-le razonablemente las hipótesis; no requiere correcciones.
-
----
+***
 
 ## 2. Ejercicio 2 – Teengamb data
 
-**Modelo:** `gamble ~ sex + status + income + verbal`
 
 ```{r}
 data(teengamb)
@@ -200,7 +200,7 @@ summary(mod_gamble)
 plot(mod_gamble, which = 1)
 ```
 
-El gráfico muestra una ligera forma de embudo (los residuos se dispersan más hacia la derecha), indicando posible heterocedasticidad. Transformaciones como `sqrt(gamble)` podrían ayudar (ver ejercicio anterior de Faraway).
+> El gráfico muestra una ligera forma de embudo y los residuos se dispersan más hacia la derecha que podría dar lugar a indicios de una posible heterocedasticidad. Es posible poder aplicar transformaciones como `sqrt(gamble)`.
 
 ### (b) Normalidad
 
@@ -210,17 +210,17 @@ qqline(residuals(mod_gamble))
 shapiro.test(residuals(mod_gamble))
 ```
 
-El QQ‑plot muestra desviaciones en las colas, y el test de Shapiro‑Wilk da p‑valor < 0.05. No se cumple la normalidad.
+> El QQ‑plot muestra desviaciones en las colas, y el test de Shapiro‑Wilk da p‑valor < 0.05 por lo que no se cumple la normalidad. 
 
 ### (c) Puntos de alto nivel
 
 ```{r}
 hii <- hatvalues(mod_gamble)
-umbral <- 2*(4+1)/nrow(teengamb)  # ≈ 0.5
+umbral <- 2*(4+1)/nrow(teengamb)
 which(hii > umbral)
 ```
 
-Algunos puntos (por ejemplo, los casos con `income` muy alto) tienen `hii` > 0.5, indicando alto nivel.
+> Algunos puntos (por ejemplo, los casos con `income` muy alto, 31,33,35,42) tienen `hii` > 0.5, indicando alto nivel.
 
 ### (d) Outliers
 
@@ -229,7 +229,7 @@ rstudent_mod <- rstudent(mod_gamble)
 which(abs(rstudent_mod) > 2)
 ```
 
-Se detectan algunos residuos > 2 (p. ej., caso 24). Son outliers potenciales.
+> Se detectan algunos residuos > 2. Son outliers potenciales el 24, 36 y 39
 
 ### (e) Puntos influyentes
 
@@ -238,7 +238,7 @@ cooks <- cooks.distance(mod_gamble)
 which(cooks > 1)
 ```
 
-No hay distancias de Cook > 1, pero varios puntos tienen valores moderados (> 0.2).
+> No hay distancias de Cook > 1, pero varios puntos tienen valores moderados (> 0.2).
 
 ### (f) Estructura
 
@@ -246,15 +246,18 @@ No hay distancias de Cook > 1, pero varios puntos tienen valores moderados (> 0.
 car::avPlots(mod_gamble)
 ```
 
-Los gráficos de variable añadida muestran que `income` tiene una relación no lineal (curvatura). Esto sugiere transformar `income` o añadir términos cuadráticos.
+> Todos los gráficos de variable añadida muestran que `income` tiene una relación no lineal (curvatura). Esto podría dar lugar transformar `income` o añadir términos cuadráticos.
 
-**Conclusión:** El modelo presenta problemas de heterocedasticidad, no normalidad, outliers y no linealidad. Se recomienda transformar la respuesta (`sqrt(gamble)`) y/o los predictores.
 
----
+Finalmente, el modelo presenta problemas de heterocedasticidad, no normalidad, outliers y no linealidad. 
+Podría recomendarse transformar la respuesta (`sqrt(gamble)`) y/o los predictores.
+
+\newpage
+
+***
 
 ## 3. Ejercicio 3 – Prostate data
 
-**Modelo:** `lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45`
 
 ```{r}
 data(prostate)
@@ -262,13 +265,16 @@ mod_pros <- lm(lpsa ~ ., data = prostate)
 summary(mod_pros)
 ```
 
+Diagnóstico rápido: varianza constante aceptable, normalidad aceptable
+($p = 0.7721$), sin outliers influyentes. **No se requieren correcciones.**
+
 ### (a) Varianza constante
 
 ```{r}
 plot(mod_pros, which = 1)
 ```
 
-La gráfica muestra una dispersión bastante constante a lo largo de los valores ajustados. No se aprecia heterocedasticidad grave.
+> La gráfica muestra una dispersión bastante constante a lo largo de los valores ajustados. No se aprecia heterocedasticidad grave.
 
 ### (b) Normalidad
 
@@ -278,17 +284,17 @@ qqline(residuals(mod_pros))
 shapiro.test(residuals(mod_pros))
 ```
 
-El QQ‑plot se ajusta bien a la línea recta; p‑valor > 0.05. Normalidad aceptable.
+> El QQ‑plot se ajusta bien a la línea recta; p‑valor > 0.05. Normalidad aceptable.
 
 ### (c) Puntos de alto nivel
 
 ```{r}
 hii <- hatvalues(mod_pros)
-umbral <- 2*(8+1)/nrow(prostate)  # ≈ 0.6
+umbral <- 2*(8+1)/nrow(prostate)
 which(hii > umbral)
 ```
 
-Algunos casos (p. ej., el 32) tienen `hii` cercano a 0.5, pero no superan el umbral. No hay puntos de alto nivel extremos.
+> Algunos casos tienen `hii` cercano a 0.5, pero no superan el umbral. No hay puntos de alto nivel extremos.
 
 ### (d) Outliers
 
@@ -297,7 +303,7 @@ rstudent_mod <- rstudent(mod_pros)
 which(abs(rstudent_mod) > 2)
 ```
 
-Ningún residuo externo supera 2 en valor absoluto.
+> Ningún residuo externo supera 2 en valor absoluto.
 
 ### (e) Puntos influyentes
 
@@ -306,7 +312,7 @@ cooks <- cooks.distance(mod_pros)
 which(cooks > 1)
 ```
 
-Ninguna distancia de Cook supera 1. Las mayores son < 0.2.
+> Ninguna distancia de Cook supera 1. Las mayores son < 0.2.
 
 ### (f) Estructura
 
@@ -314,15 +320,16 @@ Ninguna distancia de Cook supera 1. Las mayores son < 0.2.
 car::avPlots(mod_pros)
 ```
 
-Los gráficos de variable añadida muestran relaciones lineales aceptables. La variable `lcp` tiene cierta curvatura pero no es grave.
+> Los gráficos de variable añadida muestran relaciones lineales aceptables.
 
-**Conclusión:** El modelo de próstata cumple bien las hipótesis. No se requieren modificaciones importantes.
+Al parecer también este modelo cumple bien las hipótesis y por lo tanto no se requieren modificaciones importantes.
 
----
+\newpage
+
+***
 
 ## 4. Ejercicio 4 – Swiss data
 
-**Modelo:** `Fertility ~ Agriculture + Examination + Education + Catholic + Infant.Mortality`
 
 ```{r}
 data(swiss)
@@ -336,7 +343,7 @@ summary(mod_swiss)
 plot(mod_swiss, which = 1)
 ```
 
-La gráfica muestra una ligera tendencia a mayor dispersión para valores ajustados altos, pero no es clara.
+> La gráfica muestra una ligera tendencia a mayor dispersión para valores ajustados altos, pero no es clara. **no hay heterocedasticidad grave**.
 
 ### (b) Normalidad
 
@@ -346,7 +353,7 @@ qqline(residuals(mod_swiss))
 shapiro.test(residuals(mod_swiss))
 ```
 
-El QQ‑plot muestra cierta desviación en la cola superior; p‑valor ≈ 0.03 → ligera evidencia contra normalidad.
+> El test de Shapiro-Wilk da $p = 0.9318$, es excelente, lo que indica que **no hay evidencia contra la normalidad**
 
 ### (c) Puntos de alto nivel
 
@@ -356,7 +363,7 @@ umbral <- 2*(5+1)/nrow(swiss)  # ≈ 0.43
 which(hii > umbral)
 ```
 
-El cantón "Raron" tiene `hii` ≈ 0.45, ligeramente por encima del umbral. Es un punto de alto nivel.
+> Los cantones "La Vallee" (19) y "V. De Geneve" (45) superan el umbral: **puntos de alto nivel**.
 
 ### (d) Outliers
 
@@ -365,7 +372,7 @@ rstudent_mod <- rstudent(mod_swiss)
 which(abs(rstudent_mod) > 2)
 ```
 
-El caso Raron tiene residuo ≈ 2.1, se puede considerar outlier.
+> Posibles outliers: cantones 6 (Porrentruy), 37 (Sierre), 47 (Rive Gauche).
 
 ### (e) Puntos influyentes
 
@@ -374,7 +381,7 @@ cooks <- cooks.distance(mod_swiss)
 which(cooks > 1)
 ```
 
-Ninguna distancia de Cook supera 1, pero la de Raron es la mayor (≈ 0.5).
+> Ninguna distancia de Cook supera 1, pero la de Raron es $\approx 0.5$.
 
 ### (f) Estructura
 
@@ -382,15 +389,15 @@ Ninguna distancia de Cook supera 1, pero la de Raron es la mayor (≈ 0.5).
 car::avPlots(mod_swiss)
 ```
 
-Los gráficos muestran relaciones lineales aceptables, excepto quizás para `Catholic` que tiene una nube con dos grupos.
+> Los gráficos muestran relaciones lineales aceptables, excepto quizás para `Catholic` que tiene una nube con dos grupos.
 
-**Conclusión:** El modelo suizo tiene un punto influyente (Raron) que afecta levemente a la normalidad y al nivel. Se podría considerar eliminar ese cantón.
+El modelo suizo tiene un punto influyente (Raron) que afecta levemente a la normalidad y al nivel. Se podría considerar eliminar ese cantón.
 
----
+\newpage
+
+***
 
 ## 5. Ejercicio 5 – Cheddar data
-
-**Modelo:** `taste ~ Acetic + H2S + Lactic`
 
 ```{r}
 data(cheddar)
@@ -404,7 +411,7 @@ summary(mod_ched)
 plot(mod_ched, which = 1)
 ```
 
-La nube de residuos parece aleatoria y de amplitud constante. No hay heterocedasticidad.
+> La nube de residuos parece aleatoria y de amplitud constante. No hay heterocedasticidad.
 
 ### (b) Normalidad
 
@@ -414,7 +421,7 @@ qqline(residuals(mod_ched))
 shapiro.test(residuals(mod_ched))
 ```
 
-QQ‑plot aceptable; p‑valor > 0.05.
+> QQ‑plot aceptable; p‑valor > 0.05.
 
 ### (c) Puntos de alto nivel
 
@@ -424,7 +431,7 @@ umbral <- 2*(3+1)/nrow(cheddar)  # ≈ 0.5
 which(hii > umbral)
 ```
 
-Ningún punto supera 0.5. El máximo `hii` ≈ 0.4.
+> Ningún punto supera 0.5. El máximo `hii` ≈ 0.4.
 
 ### (d) Outliers
 
@@ -433,7 +440,7 @@ rstudent_mod <- rstudent(mod_ched)
 which(abs(rstudent_mod) > 2)
 ```
 
-No hay residuos > 2.
+> No hay residuos > 2.
 
 ### (e) Puntos influyentes
 
@@ -442,7 +449,7 @@ cooks <- cooks.distance(mod_ched)
 which(cooks > 1)
 ```
 
-Todas las distancias de Cook son < 0.2.
+> Todas las distancias de Cook son < 0.2.
 
 ### (f) Estructura
 
@@ -450,11 +457,13 @@ Todas las distancias de Cook son < 0.2.
 car::avPlots(mod_ched)
 ```
 
-Las relaciones son lineales; no se aprecian curvaturas.
+> Las relaciones son lineales; no se aprecian curvaturas.
 
-**Conclusión:** El modelo de queso es muy bueno y cumple todas las hipótesis.
+El modelo de queso es muy bueno y cumple todas las hipótesis.
 
----
+\newpage
+
+***
 
 ## 6. Ejercicio 6 (*) – Happy data
 
@@ -477,7 +486,9 @@ summary(mod_happy)
 
 **Conclusión:** El modelo tiene problemas de heterocedasticidad y normalidad. Se podría transformar `happy` (escala Likert, quizás usar logit o modelos ordinales).
 
----
+\newpage
+
+***
 
 ## 7. Ejercicio 7 (*) – tvdoctor data
 
@@ -500,7 +511,7 @@ summary(mod_tv)
 
 **Conclusión:** Modelo sencillo y bien comportado.
 
----
+***
 
 ## 8. Ejercicio 8 (*) – Divusa data (serial correlation)
 
@@ -522,25 +533,38 @@ dwtest(mod_div)  # Durbin-Watson
 acf(residuals(mod_div))
 ```
 
-El test de Durbin‑Watson da un p‑valor < 0.05, indicando autocorrelación positiva significativa. El ACF muestra correlaciones altas en los primeros rezagos.
+> El test de Durbin‑Watson da un p‑valor < 0.05, indicando autocorrelación positiva significativa. El ACF muestra correlaciones altas en los primeros rezagos.
 
-**Conclusión:** Hay dependencia temporal. Se debe modelar con mínimos cuadrados generalizados (gls) o incluir un término AR.
+Hay dependencia temporal. Se debe modelar con mínimos cuadrados generalizados (gls) o incluir un término AR.
 
----
+***
 
 ## 9. Ejercicio 9 – Divusa data (multicolinealidad)
 
-**Modelo:** mismo que en 8.
+**Modelo:** mismo que en el punto anterior.
 
 ### (a) Números de condición
 
 ```{r}
 X <- model.matrix(mod_div)[, -1]  # sin intercept
 condnum <- kappa(X, exact = TRUE)
-condnum  # ≈ 30? Se espera > 30 indicando multicolinealidad grave
+condnum
 ```
 
-El número de condición (raíz cuadrada del cociente entre el mayor y el menor valor propio de X'X) suele ser elevado (> 30) en este conjunto, indicando colinealidad fuerte.
+> El número de condición (raíz cuadrada del cociente entre el mayor y el menor valor propio de X'X) suele ser elevado (> 30) en este conjunto, indica **multicolinealidad > moderada o baja**, no grave.
+
+
+```{r ex9-a}
+X9 <- model.matrix(mod_div)[, -1]
+kappa_div <- kappa(X9, exact = TRUE)
+cat("Número de condición:", round(kappa_div, 2), "\n")
+
+# Interpretación de referencia
+if (kappa_div < 10)       cat("→ Sin multicolinealidad\n")
+if (kappa_div >= 10 & kappa_div < 30) cat("→ Multicolinealidad MODERADA\n")
+if (kappa_div >= 30)      cat("→ Multicolinealidad GRAVE\n")
+```
+
 
 ### (b) Factores de inflación de varianza (VIF)
 
@@ -549,7 +573,14 @@ library(car)
 vif(mod_div)
 ```
 
-Los VIF para `fembab` y `marriage` suelen ser > 10 (a veces > 100). Esto confirma multicolinealidad grave.
+> Los VIF para `fembab` y `marriage` suelen ser > 10 (a veces > 100). Los valores reales son todos **menores que 4**, lo que **no confirma multicolinealidad grave**.
+
+```{r ex9-b}
+vif_div <- vif(mod_div)
+vif_div
+cat("VIF máximo:", round(max(vif_div), 2), "\n")
+```
+
 
 ### (c) Eliminación de predictores no significativos
 
@@ -558,11 +589,9 @@ mod_div2 <- step(mod_div, direction = "backward")
 vif(mod_div2)
 ```
 
-Tras eliminar predictores no significativos (p.ej., `military`), los VIF se reducen notablemente, pero aún pueden quedar valores > 5. La colinealidad entre `fembab` y `marriage` es difícil de eliminar.
+> La selección hacia atrás mantiene todos los predictores (AIC mínimo con el modelo completo). Los VIF no se reducen significativamente porque la colinealidad era ya moderada. La multicolinealidad no es un problema serio en este modelo.
 
-**Conclusión:** La multicolinealidad afecta la significación individual de los coeficientes. Eliminar predictores ayuda pero no resuelve completamente.
-
----
+***
 
 ## 10. Ejercicio 10 – Longley data
 
@@ -581,7 +610,7 @@ X <- model.matrix(mod_long)[, -1]
 kappa(X, exact = TRUE)  # muy grande, ≈ 30000
 ```
 
-El número de condición es enorme (>> 30), indicando multicolinealidad extremadamente grave.
+> El número de condición es enorme (>> 30), indicando multicolinealidad extremadamente grave.
 
 ### (b) Correlaciones entre predictores
 
@@ -589,7 +618,7 @@ El número de condición es enorme (>> 30), indicando multicolinealidad extremad
 cor(longley[, -7])  # matriz de correlaciones
 ```
 
-Se observan correlaciones muy altas (p. ej., `GNP` con `Year` ≈ 0.99, `Population` con `Year` ≈ 0.99).
+> Se observan correlaciones muy altas (p. ej., `GNP` con `Year` ≈ 0.99, `Population` con `Year` ≈ 0.99).
 
 ### (c) VIF
 
@@ -597,11 +626,11 @@ Se observan correlaciones muy altas (p. ej., `GNP` con `Year` ≈ 0.99, `Populat
 vif(mod_long)
 ```
 
-Todos los VIF son > 100, muchos > 1000. La colinealidad es insostenible.
+> Todos los VIF son > 100, muchos > 1000. La colinealidad es insostenible.
 
-**Conclusión:** El modelo de Longley es un ejemplo clásico de multicolinealidad perfecta aproximada. Se necesita eliminar variables o usar regresión ridge.
+El modelo de Longley es un ejemplo clásico de multicolinealidad perfecta aproximada donde $\kappa \approx 5751$ y VIFs $\gg 100$: **multicolinealidad extrema**. Se necesita eliminar variables o usar regresión ridge.
 
----
+***
 
 ## 11. Ejercicio 11 – Prostate data (multicolinealidad)
 
@@ -615,10 +644,10 @@ mod_pros <- lm(lpsa ~ ., data = prostate)
 
 ```{r}
 X <- model.matrix(mod_pros)[, -1]
-kappa(X, exact = TRUE)  # ≈ 20-30
+kappa(X, exact = TRUE)
 ```
 
-El número de condición está en el límite (≈ 25). Hay colinealidad moderada.
+> El número de condición está en el límite, el valor correcto es 243, que es alto pero se debe principalmente a diferencias de escala entre predictores. Los VIF son el indicador más fiable.
 
 ### (b) Correlaciones entre predictores
 
@@ -626,7 +655,7 @@ El número de condición está en el límite (≈ 25). Hay colinealidad moderada
 cor(prostate[, -9])
 ```
 
-Algunas correlaciones son moderadas (p. ej., `lcavol` con `lcp` ≈ 0.7), pero ninguna es extremadamente alta.
+> Algunas correlaciones son moderadas (p. ej., `lcavol` con `lcp` ≈ 0.7), pero ninguna es extremadamente alta.
 
 ### (c) VIF
 
@@ -634,11 +663,9 @@ Algunas correlaciones son moderadas (p. ej., `lcavol` con `lcp` ≈ 0.7), pero n
 vif(mod_pros)
 ```
 
-Los VIF son todos < 10, la mayoría < 5. No hay evidencia de multicolinealidad grave.
+> Todos los VIF $< 4$: **no hay multicolinealidad grave**. El número de condición alto era un artefacto de escala. El modelo de próstata no sufre problemas importantes de colinealidad.
 
-**Conclusión:** El modelo de próstata no sufre problemas importantes de colinealidad.
-
----
+***
 
 ## 12. Ejercicio 12 (*) – Fat data (modelo de la sección 4.2)
 
@@ -648,32 +675,32 @@ La sección 4.2 de Faraway ajusta un modelo con `brozek` como respuesta y muchos
 
 ```{r}
 data(fat)
-mod_fat <- lm(brozek ~ ., data = fat)  # modelo completo
-kappa(model.matrix(mod_fat)[, -1])  # número de condición
+mod_fat <- lm(brozek ~ ., data = fat)
+kappa(model.matrix(mod_fat)[, -1])
 vif(mod_fat)
 ```
 
-El número de condición es alto (> 30) y muchos VIF son > 10, indicando multicolinealidad grave (las medidas corporales están muy correlacionadas).
+> El número de condición es alto (> 30) y muchos VIF son > 10, indicando multicolinealidad grave (las medidas corporales están muy correlacionadas).
 
 ### (b) Eliminar casos 39 y 42
 
 ```{r}
 fat_clean <- fat[-c(39,42), ]
 mod_fat_clean <- lm(brozek ~ ., data = fat_clean)
-vif(mod_fat_clean)  # sigue siendo alta
+vif(mod_fat_clean)
 ```
 
-La colinealidad persiste; eliminar estos casos no reduce sustancialmente la multicolinealidad.
+> La colinealidad persiste; eliminar estos casos no reduce sustancialmente la multicolinealidad.
 
 ### (c) Modelo reducido: `brozek ~ age + weight + height`
 
 ```{r}
 mod_redux <- lm(brozek ~ age + weight + height, data = fat)
-kappa(model.matrix(mod_redux)[, -1])  # mucho menor (~ 10)
-vif(mod_redux)  # todos < 5
+kappa(model.matrix(mod_redux)[, -1])
+vif(mod_redux)
 ```
 
-La colinealidad desaparece. La simplicidad mejora la interpretación.
+> La colinealidad desaparece. La simplicidad mejora la interpretación.
 
 ### (d) Intervalo de predicción para valores medianos
 
@@ -689,7 +716,7 @@ new1 <- data.frame(age = 40, weight = 200, height = 73)
 predict(mod_redux, newdata = new1, interval = "prediction")
 ```
 
-Este intervalo es más ancho que el anterior porque los valores se alejan de la media.
+> Este intervalo es más ancho que el anterior porque los valores se alejan de la media.
 
 ### (f) Intervalo para `age=40, weight=130, height=73`
 
@@ -698,22 +725,17 @@ new2 <- data.frame(age = 40, weight = 130, height = 73)
 predict(mod_redux, newdata = new2, interval = "prediction")
 ```
 
-`weight=130` está cerca de la mediana (≈ 150), por lo que el intervalo es más estrecho que en (e). Sin embargo, `height=73` es un valor alto (media ≈ 68), por lo que sigue habiendo extrapolación moderada.
+> `weight=130` está cerca de la mediana (≈ 150), por lo que el intervalo es más estrecho que en (e). Sin embargo, `height=73` es un valor alto (media ≈ 68), por lo que sigue habiendo extrapolación moderada.
 
-**Conclusión:** El modelo completo de grasa corporal sufre multicolinealidad extrema; el modelo reducido (solo edad, peso, altura) es más estable y permite predicciones razonables.
+El modelo completo de grasa corporal sufre multicolinealidad extrema; el modelo reducido (solo edad, peso, altura) es más estable y permite predicciones razonables.
 
----
+***
 
-## Resumen final
-
-Se han realizado los diagnósticos completos para los 12 ejercicios, verificando las hipótesis de homocedasticidad, normalidad, ausencia de outliers, puntos influyentes y colinealidad. Los resultados son consistentes con la literatura y permiten proponer mejoras o confirmar la validez de los modelos.
-
-**Feedback solicitado:** Por favor, indique si algún resultado no coincide con la ejecución real en su entorno, o si desea una ampliación de algún apartado específico.
+\newpage
 
 
 ## Ejercicios de Carmona (Diagnosis del modelo) – Capítulo 9
 
-A continuación se resuelven los dos ejercicios propuestos por Carmona en el capítulo 9 del libro *Modelos lineales*, utilizando los datos de tráfico (densidad y velocidad) ya empleados en ejercicios anteriores. Se incluye el código R completo, los gráficos necesarios y la interpretación detallada.
 
 ### Datos de tráfico (Tabla 1.1)
 
@@ -729,11 +751,11 @@ rvel <- sqrt(velocidad)
 datos <- data.frame(densidad, velocidad, rvel)
 ```
 
----
+***
 
 ## Ejercicio 9.1 – Análisis completo de residuos del modelo parabólico
 
-**Modelo:** \( \text{rvel} = \beta_0 + \beta_1 \cdot \text{densidad} + \beta_2 \cdot \text{densidad}^2 + \varepsilon \)
+**El modelo:** $\text{rvel} = \beta_0 + \beta_1 \cdot \text{densidad} + \beta_2 \cdot \text{densidad}^2 + \varepsilon$
 
 ### 1. Ajuste del modelo parabólico
 
@@ -742,19 +764,10 @@ mod_par <- lm(rvel ~ densidad + I(densidad^2), data = datos)
 summary(mod_par)
 ```
 
-**Salida esperada:**
-
-```
-Coefficients:
-              Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  8.929e+00  2.322e-01  38.448  < 2e-16 ***
-densidad    -1.089e-01  1.371e-02  -7.943 8.09e-08 ***
-I(densidad^2) 4.656e-04  1.655e-04   2.814   0.0102 *  
----
-Residual standard error: 0.2378 on 21 degrees of freedom
-Multiple R-squared:  0.9768,	Adjusted R-squared:  0.9746 
-F-statistic: 441.9 on 2 and 21 DF,  p-value: < 2.2e-16
-```
+- **Intercepto** $\approx 8.881$
+- **densidad** $\approx -0.1035$
+- **densidad²** $\approx 4.656 \times 10^{-4}$
+- **RSE** $\approx 0.1297$, $R^2_{\text{aj}} \approx 0.9923$
 
 ### 2. Análisis de residuos
 
@@ -768,12 +781,23 @@ hat_par <- hatvalues(mod_par)
 
 #### b) Gráfico de residuos vs valores ajustados (homocedasticidad)
 
-```{r}
-plot(fitted(mod_par), res_par, xlab = "Valores ajustados", ylab = "Residuos")
-abline(h = 0, col = "red")
+
+```{r c91-b}
+hat_par       <- hatvalues(mod_par)
+rstudent_par  <- rstudent(mod_par)
+umbral_lev_par <- 2 * 3 / nrow(datos)
+
+plot(hat_par, rstudent_par,
+     xlab = "Leverage", ylab = "Residuos studentizados")
+abline(h  = c(-2, 2), lty = 2, col = "blue")
+abline(v  = umbral_lev_par, lty = 2, col = "red")
+legend("topright",
+       legend = c("+-2", paste0("umbral lev = ", round(umbral_lev_par, 2))),
+       col = c("blue", "red"), lty = 2, cex = 0.8)
 ```
 
-La nube de puntos muestra una dispersión constante y sin forma de embudo → **varianza constante aceptable**.
+Ningún punto supera $|t| > 2$ ni tiene leverage $> 0.25$: **no hay outliers ni puntos de alto leverage**.
+
 
 #### c) Gráfico de residuos studentizados vs leverage (detección de puntos influyentes)
 
@@ -782,7 +806,7 @@ plot(hat_par, rstudent_par, xlab = "Leverage", ylab = "Residuos studentizados")
 abline(h = c(-2,2), lty = 2, col = "blue")
 ```
 
-Ningún punto supera |t| > 2 ni tiene leverage > \(2(p+1)/n = 2·3/24 = 0.25\). No hay outliers ni puntos de alto leverage.
+Ningún punto supera |t| > 2 ni tiene leverage > $2(p+1)/n = 2·3/24 = 0.25$. No hay outliers ni puntos de alto leverage.
 
 #### d) Distancia de Cook
 
@@ -792,7 +816,7 @@ plot(cooks_par, type = "h", xlab = "Observación", ylab = "Distancia de Cook")
 abline(h = 1, col = "red")
 ```
 
-Todas las distancias de Cook son inferiores a 0.2 → **sin observaciones influyentes**.
+> Todas las distancias de Cook $< 0.5$: **sin observaciones influyentes**.
 
 #### e) Normalidad de los residuos (QQ‑plot y test de Shapiro‑Wilk)
 
@@ -802,20 +826,19 @@ qqline(res_par, col = "red")
 shapiro.test(res_par)
 ```
 
-El QQ‑plot se ajusta bien a la línea recta; p‑valor > 0.05 → **no se rechaza la normalidad**.
+> El QQ‑plot se ajusta bien a la línea recta; p‑valor > 0.05 por lo que **no se rechaza la normalidad**.
 
 ### 3. Comparación con el modelo lineal simple
 
-El modelo lineal simple (solo `densidad`) presentaba un gráfico de residuos vs ajustados con forma de U invertida (falta de linealidad). El término cuadrático elimina esa tendencia, mejorando claramente el ajuste (R² ajustado pasa de 0.967 a 0.975).
+El modelo lineal simple, solo `densidad`, presentaba un gráfico de residuos vs ajustados con forma de U invertida, falta de linealidad. El término cuadrático elimina esa tendencia, mejorando claramente el ajuste ($R^2$ ajustado pasa de 0.967 a 0.975).
 
-**Conclusión del ejercicio 9.1:**  
-El modelo parabólico es adecuado; los residuos cumplen las hipótesis de homocedasticidad, normalidad e independencia. No hay puntos atípicos ni influyentes.
+Por lo tanto, el modelo parabólico es adecuado; los residuos cumplen las hipótesis de homocedasticidad, normalidad e independencia. No hay puntos atípicos ni influyentes.
 
----
+***
 
 ## Ejercicio 9.2 – Comparación de modelos con velocidad (sin transformar)
 
-**Objetivo:** Justificar por qué se utiliza la raíz cuadrada de la velocidad como variable respuesta en lugar de la velocidad original.
+El **objetivo es ** justificar por qué se utiliza la raíz cuadrada de la velocidad como variable respuesta en lugar de la velocidad original.
 
 ### 1. Modelo lineal simple con velocidad original
 
@@ -831,7 +854,7 @@ plot(fitted(mod_vel), residuals(mod_vel))
 abline(h = 0, col = "red")
 ```
 
-Se observa un claro patrón de “embudo” (mayor dispersión para valores bajos de velocidad) y una curvatura pronunciada → **heterocedasticidad y no linealidad**.
+> Se observa un claro patrón de “embudo”, es decir una mayor dispersión para valores bajos de velocidad y una curvatura pronunciada, por lo tanto **heterocedasticidad y no linealidad**.
 
 ### 2. Modelo parabólico con velocidad original
 
@@ -847,13 +870,13 @@ plot(fitted(mod_vel_par), residuals(mod_vel_par))
 abline(h = 0, col = "red")
 ```
 
-Aunque mejora la parte sistemática, la heterocedasticidad persiste (la varianza de los residuos aumenta a medida que la velocidad predicha disminuye).
+> Aunque mejora la parte sistemática, la heterocedasticidad persiste (la varianza de los residuos aumenta a medida que la velocidad predicha disminuye).
 
 ### 3. Comparación de la calidad del ajuste
 
-| Modelo                     | R² ajustado | ECM   | Patrón de residuos            |
-|----------------------------|-------------|-------|-------------------------------|
-| Lineal (velocidad)         | 0.908       | 34.2  | curvatura + heterocedasticidad |
+| Modelo                     | $R^2$ ajustado | ECM   | Patrón de residuos         |
+|***************************-|************-|******-|******************************-|
+| Lineal (velocidad)         | 0.908       | 34.2  | curvatura + heterocedasticidad|
 | Parabólico (velocidad)     | 0.949       | 16.1  | heterocedasticidad leve       |
 | Lineal (raíz cuadrada)     | 0.967       | 0.072 | aleatorio, homocedástico      |
 | Parabólico (raíz cuadrada) | 0.975       | 0.057 | excelente                     |
@@ -869,254 +892,13 @@ bptest(mod_par)        # p-valor ≈ 0.45 → homocedasticidad clara
 
 ### 5. Transformación raíz cuadrada como estabilizadora de la varianza
 
-La teoría indica que si la varianza es proporcional a la media (\( \text{var}(Y) \propto E[Y] \)), la transformación \( \sqrt{Y} \) estabiliza la varianza. En los datos de tráfico, la velocidad es un contaje (vehículos por tiempo), y es habitual que su varianza aumente con la media. La raíz cuadrada logra:
+La teoría indica que si la varianza es proporcional a la media $\text{var}(Y) \propto E[Y]$, la transformación $\sqrt{Y}$ estabiliza la varianza. En los datos de tráfico, la velocidad es un contaje (vehículos por tiempo), y es habitual que su varianza aumente con la media. La raíz cuadrada logra:
 
 - Linealizar la relación con la densidad.
 - Hacer la varianza de los residuos constante.
 - Mejorar la normalidad de los errores.
 
-**Conclusión del ejercicio 9.2:**  
-El modelo con velocidad original, incluso incluyendo un término cuadrático, presenta problemas de heterocedasticidad y no linealidad residual. La transformación raíz cuadrada de la velocidad corrige ambos problemas, proporcionando un modelo más fiable y con mejores propiedades estadísticas. Por tanto, su utilización está plenamente justificada.
-
----
-
-## Código R completo (para reproducir el análisis)
-
-```{r}
-# Datos
-densidad <- c(12.7, 17.0, 66.0, 50.0, 87.8, 81.4, 75.6, 66.2, 81.1, 62.8,
-              77.0, 89.6, 18.3, 19.1, 16.5, 22.2, 18.6, 66.0, 60.3, 56.0,
-              66.3, 61.7, 66.6, 67.8)
-velocidad <- c(62.4, 50.7, 17.1, 25.9, 12.4, 13.4, 13.7, 17.9, 13.8, 17.9,
-               15.8, 12.6, 51.2, 50.8, 54.7, 46.5, 46.3, 16.9, 19.8, 21.2,
-               18.3, 18.0, 16.6, 18.3)
-rvel <- sqrt(velocidad)
-
-# Modelos
-mod_lin_rvel <- lm(rvel ~ densidad)
-mod_par_rvel <- lm(rvel ~ densidad + I(densidad^2))
-mod_lin_vel <- lm(velocidad ~ densidad)
-mod_par_vel <- lm(velocidad ~ densidad + I(densidad^2))
-
-# Diagnóstico del parabólico con raíz cuadrada
-par(mfrow = c(2,2))
-plot(mod_par_rvel)
-shapiro.test(residuals(mod_par_rvel))
-bptest(mod_par_rvel)
-
-# Comparación de gráficos de residuos
-par(mfrow = c(1,2))
-plot(fitted(mod_lin_vel), residuals(mod_lin_vel), main = "Lineal (velocidad)")
-abline(h = 0, col = "red")
-plot(fitted(mod_par_rvel), residuals(mod_par_rvel), main = "Parabólico (raíz cuadrada)")
-abline(h = 0, col = "red")
-```
-
----
-
-**Feedback solicitado:**  
-Ejecute el código anterior con los datos proporcionados y confirme si los resultados coinciden con los esperados. Si hay discrepancias, indíquelas para ajustar la interpretación.
-
-
-## Revisión de los resultados del trabajo `ACTIVITY05_MarcoRusso.pdf`
-
-A continuación se analizan, ejercicio por ejercicio, las salidas y comentarios presentados en el documento del estudiante. Se indican los **errores** encontrados y, cuando procede, se proporciona la **corrección** necesaria.
-
----
-
-### Ejercicio 1 – SAT data
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Varianza constante | ✅ Sí | El gráfico y la interpretación son adecuados. |
-| (b) Normalidad | ✅ Sí | QQ-plot y test de Shapiro-Wilk (p=0.4304) correctos. |
-| (c) Puntos de alto nivel | ❌ **Error** | El umbral correcto es \(2(p+1)/n = 2·5/50 = 0.2\), no 0.4. Los puntos `California`, `Connecticut`, `New Jersey` y `Utah` tienen `hii > 0.2`, por lo tanto **sí existen puntos de alto nivel**. El comentario "No hay puntos de alto nivel" es falso. |
-| (d) Outliers | ✅ Correcto | `rstudent` no supera 2 en valor absoluto. |
-| (e) Influencia | ✅ Correcto | Distancias de Cook < 0.2. |
-| (f) Estructura | ✅ Correcto | Gráficos de variable añadida razonables. |
-
-**Corrección necesaria:**  
-- Cambiar el umbral a 0.2 y reconocer que existen 4 observaciones con leverage alto (aunque no necesariamente influyentes).
-
----
-
-### Ejercicio 2 – Teengamb data
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Varianza constante | ✅ Correcto | Se detecta posible heterocedasticidad. |
-| (b) Normalidad | ✅ Correcto | p-valor 8.16e-5 → no normalidad. |
-| (c) Puntos de alto nivel | ✅ Correcto | Casos 31,33,35,42 con `hii > 0.5`. |
-| (d) Outliers | ✅ Correcto | Casos 24,36,39 con |rstudent|>2. |
-| (e) Influencia | ✅ Correcto | Cook < 1. |
-| (f) Estructura | ✅ Correcto | `income` muestra curvatura. |
-
-Sin errores destacables.
-
----
-
-### Ejercicio 3 – Prostate data
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Varianza constante | ✅ Correcto | |
-| (b) Normalidad | ✅ Correcto | p=0.7721 → normalidad aceptable. |
-| (c) Puntos de alto nivel | ✅ Correcto | Umbral 0.6, ningún punto lo supera. |
-| (d) Outliers | ✅ Correcto | Ningún |rstudent|>2. |
-| (e) Influencia | ✅ Correcto | Cook < 1. |
-| (f) Estructura | ✅ Correcto | |
-
-Sin errores.
-
----
-
-### Ejercicio 4 – Swiss data
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Varianza constante | ✅ Correcto | |
-| (b) Normalidad | ❌ **Error** | El test de Shapiro-Wilk da **p‑valor = 0.9318**, no 0.03. El comentario “ligera evidencia contra normalidad” es incorrecto. No hay evidencia contra la normalidad. |
-| (c) Puntos de alto nivel | ✅ Correcto | Umbral 0.43, puntos 19 y 45 (La Vallee, V. De Geneve) lo superan. |
-| (d) Outliers | ✅ Correcto | Casos 6,37,47 con |rstudent|>2. |
-| (e) Influencia | ✅ Correcto | Cook máximo ~0.5. |
-| (f) Estructura | ✅ Correcto | |
-
-**Corrección:**  
-- Indicar que el p-valor es 0.9318, por lo que **no se rechaza la normalidad**.
-
----
-
-### Ejercicio 5 – Cheddar data
-
-Todo correcto.
-
----
-
-### Ejercicio 6 – Happy data (opcional)
-
-Sin errores graves. Las conclusiones son razonables.
-
----
-
-### Ejercicio 7 – tvdoctor data (opcional)
-
-Correcto.
-
----
-
-### Ejercicio 8 – Divusa data (serial correlation)
-
-Correcto: Durbin-Watson p < 2.2e-16 → autocorrelación significativa.
-
----
-
-### Ejercicio 9 – Divusa data (multicolinealidad)
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Números de condición | ❌ **Error de interpretación** | `κ = 25.15`. El estudiante dice “indica colinealidad fuerte” y “suele ser elevado (>30)”. En realidad, κ < 30 se considera **multicolinealidad moderada o baja**. Además, comenta que “VIF para fembab y marriage suelen ser >10”, pero los VIF calculados son todos < 4. |
-| (b) VIF | ✅ Correcto en los números | Pero la interpretación es exagerada: no hay evidencia de colinealidad grave. |
-| (c) Eliminación de predictores | ✅ Correcto | El `step` no elimina ninguno (AIC mínimo con todos). |
-
-**Corrección:**  
-- Aclarar que κ = 25.15 indica **multicolinealidad moderada**, no grave.  
-- Los VIF < 4 confirman que la colinealidad no es un problema serio.
-
----
-
-### Ejercicio 10 – Longley data
-
-Correcto. Número de condición enorme (5751) y VIF altísimos → multicolinealidad extrema.
-
----
-
-### Ejercicio 11 – Prostate data (multicolinealidad)
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Números de condición | ❌ **Error numérico** | El estudiante escribe “κ = 243.3” y luego comenta “está en el límite (25)”. Es una contradicción. Además, dice “colinealidad moderada”. |
-| (b) Correlaciones | ✅ Correcto | |
-| (c) VIF | ✅ Correcto | Todos < 4, indicando ausencia de colinealidad grave. |
-
-**Corrección:**  
-- El valor de κ es alto (243) debido a diferencias de escala entre predictores. Al estandarizar los datos, κ se reduce. Los VIF bajos son más fiables: **no hay problema de multicolinealidad**.
-
----
-
-### Ejercicio 12 – Fat data
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| (a) Diagnósticos | ✅ Correcto | κ = 4640, VIF altos → colinealidad grave. |
-| (b) Eliminar casos 39 y 42 | ✅ Correcto | La colinealidad persiste. |
-| (c) Modelo reducido | ✅ Correcto | κ = 23.9, VIF no mostrados pero previsiblemente bajos. |
-| (d) Intervalo mediano | ✅ Correcto | `[7.66, 28.90]` (aproximadamente). |
-| (e) Intervalo (40,200,73) | ✅ Correcto | Más ancho por extrapolación. |
-| (f) Intervalo (40,130,73) | ✅ Correcto | Más estrecho que (e), pero `height=73` es alto (media 68) → extrapolación moderada. |
-
-Todo correcto en este ejercicio.
-
----
-
-### Ejercicio 9.1 de Carmona – Modelo parabólico con raíz cuadrada
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| Ajuste del modelo | ❌ **Error grave** | La salida mostrada (`R² = 0.993`, `Error estándar = 0.1297`) corresponde en realidad al **modelo parabólico con velocidad original** (véase ejercicio 9.2). Con los datos correctos y `rvel = sqrt(velocidad)`, el modelo parabólico debe dar `R² ≈ 0.9768` y `Residual standard error ≈ 0.2378`. |
-| Análisis de residuos | ❌ **Inconsistente** | Los gráficos y comentarios se basan en el modelo erróneo. |
-| Comparación con lineal simple | ✅ Válida conceptualmente | Pero los números concretos (R² ajustado pasa de 0.967 a 0.975) son los correctos, no los del PDF. |
-
-**Corrección:**  
-- Reemplazar la salida del modelo parabólico con la correcta:  
-
-```r
-mod_par <- lm(rvel ~ densidad + I(densidad^2), data = datos)
-summary(mod_par)
-# Coef: (Intercept) 8.92881, densidad -0.10886, I(densidad^2) 0.0004656
-# RSE: 0.2378, R²: 0.9768
-```
-
-- Ajustar los comentarios de los gráficos según este modelo.
-
----
-
-### Ejercicio 9.2 de Carmona – Comparación con velocidad original
-
-| Aspecto | ¿Correcto? | Observaciones |
-|---------|------------|----------------|
-| Modelo lineal con velocidad | ✅ Correcto | R² ajustado = 0.941 (no 0.908 como aparece en la tabla). |
-| Modelo parabólico con velocidad | ✅ Correcto | R² ajustado = 0.9891. |
-| Tabla comparativa | ❌ **Error** | Valores de R² ajustado incorrectos:  
-  - Lineal (velocidad): debería ser **0.941** (no 0.908)  
-  - Parabólico (velocidad): **0.989** (no 0.949)  
-  - Lineal (raíz): **0.967** (correcto)  
-  - Parabólico (raíz): **0.975** (correcto) |
-| Tests de Breusch-Pagan | ❌ **Interpretación errónea** |  
-  - `bptest(mod_vel)` da **p = 0.9442**, no 0.02. El estudiante escribe “p‑valor 0.02” pero el output muestra 0.9442.  
-  - `bptest(mod_vel_par)` da **p = 0.02337**, correctamente identificado como significativo. |
-| Conclusión final | ✅ Correcta | La transformación raíz cuadrada estabiliza la varianza y linealiza la relación. |
-
-**Correcciones:**  
-- Corregir la tabla de R² ajustado.  
-- Rectificar el comentario sobre el test de Breusch-Pagan para `mod_vel`: p = 0.94 → **no hay evidencia de heterocedasticidad** (aunque el gráfico sugiere lo contrario, el test no la detecta).  
-- Mantener la conclusión de que la raíz cuadrada es preferible.
-
----
-
-## Resumen de correcciones necesarias
-
-| Ejercicio | Tipo de error | Corrección |
-|-----------|---------------|-------------|
-| 1 (SAT) | Cálculo del umbral de leverage | Usar 2*(p+1)/n = 0.2; reconocer que hay 4 puntos con leverage alto. |
-| 4 (Swiss) | Interpretación de p-valor de normalidad | p = 0.9318 → no rechazar normalidad. |
-| 9 (Divusa) | Interpretación de colinealidad | κ = 25 → moderada, no grave; VIF < 4. |
-| 11 (Prostate) | Número de condición mal interpretado | κ alto por escala, pero VIF bajos → sin colinealidad grave. |
-| 9.1 (Carmona) | Salida del modelo parabólico incorrecta | Sustituir por la salida correcta (R²=0.9768, RSE=0.2378). |
-| 9.2 (Carmona) | Tabla de R² ajustado y test BP | Corregir valores de R² y comentarios sobre p-valores. |
-
-El resto de las salidas y comentarios son **correctos** o suficientemente aproximados.
-
-Si desea que proporcione el **código R corregido** en formato `R Markdown` para cada uno de estos apartados, indíquelo y lo generaré.
+Finalmente, el modelo con velocidad original, incluso incluyendo un término cuadrático, presenta problemas de heterocedasticidad y no linealidad residual. La transformación raíz cuadrada de la velocidad corrige ambos problemas, proporcionando un modelo más fiable y con mejores propiedades estadísticas. Por tanto, su utilización está plenamente justificada.
 
 
 ***
@@ -1127,15 +909,9 @@ REFERENCIA BIBLIOGRAFIA
 
 Materiales complementarios
 
-* Carmona, Francesc, Modelos lineales, Publicaciones UB, 2004.
-    Regresión lineal simple (6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8)
-    El apartado 6.7 Comparación de rectas se tratará de otra forma
-
-* ML [Pages 91 - 119].pdf Descargar ML [Pages 91 - 119].pdf
-    Regresión lineal múltiple (8.1, 8.2, 8.3, 8.4)
-
-* ML [Pages 133 - 160].pdf Descargar ML [Pages 133 - 160].pdf
- Faraway, Julian J., Linear Modelos with R, CRC Press, 2014.
+- Faraway, Julian J., *Linear Models with R*, CRC Press, 2014.
+- Carmona, Francesc, *Modelos lineales*, Publicaciones UB, 2004.
+- Quick-R: <https://www.statmethods.net/stats/regression.html>
 
 
 * Quick-R https://www.statmethods.net/stats/regression.htmlLinks to an external site. (Fitting the Model)
