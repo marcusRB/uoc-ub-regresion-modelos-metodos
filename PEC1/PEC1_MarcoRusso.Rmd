@@ -119,6 +119,8 @@ El objetivo es construir y evaluar modelos de **regresión lineal múltiple** (y
 
 ***
 
+\newpage
+
 ## Ejercicio 0: Estandarización de los datos (10 pt.)
 
 ### (0.1) Modelo con sexo como factor
@@ -389,6 +391,8 @@ Entonces no podemos definirlo como un buen modelo de manera absoluta. Aunque es 
 
 ***
 
+\newpage
+
 ## Ejercicio 2: Inferencia sobre parámetros y comparación de modelos (20 pt.)
 
 ### (2.1) ¿Podemos prescindir de algún predictor en modelo1?
@@ -436,6 +440,8 @@ La comparación de modelos anidados se basa en el **test F parcial** o **anális
 Referencia: Módulo "Regresión lineal múltiple", sección 8.3 (Significación parcial).
 
 ***
+
+\newpage
 
 ## Ejercicio 3: Modelo ANCOVA (20 pt.)
 
@@ -495,6 +501,8 @@ $$
 
 ***
 
+\newpage
+
 ## Ejercicio 4: Diagnóstico del modelo ANCOVA con interacción (20 pt.)
 
 ### (4.1) Gráficos básicos de diagnóstico
@@ -510,7 +518,7 @@ plot(modelo_ancova_int)
    Permite evaluar la **homocedasticidad** y la **linealidad**. Si los puntos se distribuyen aleatoriamente alrededor de cero sin formas de embudo o curvas, los supuestos son razonables. En este caso, se observa una ligera tendencia a mayor dispersión para valores ajustados altos, lo que podría indicar heterocedasticidad.
 
 2. **Normal Q-Q**  
-   Compara los cuantiles de los residuos con los de una distribución normal. Si los puntos siguen la línea recta, se cumple la normalidad. Aquí las colas se desvían ligeramente, sugiriendo cierta falta de normalidad.
+   Compara los cuantiles de los residuos con los de una distribución normal. Si los puntos siguen la línea recta, se cumple la normalidad. Aquí las colas se desvían ligeramente, por lo que nos indica cierta falta de normalidad.
 
 3. **Scale-Location**  
    Es la raíz cuadrada de los residuos estandarizados frente a los valores ajustados. Sirve para detectar heterocedasticidad de forma más clara. Una línea horizontal indica varianza constante. Se aprecia una leve pendiente positiva.
@@ -601,11 +609,7 @@ legend("topright", c("D > 4/n (umbral suave)", "D > 1 (umbral estricto)"),
 3. **No eliminar automáticamente:** un punto influyente puede ser una observación legítima que aporta información real sobre casos extremos. La eliminación solo está justificada ante errores de medición comprobados.
 4. **Regresión robusta** como alternativa: reduce automáticamente la influencia de los puntos extremos sin necesidad de eliminarlos.
 
-\newpage
-
-# Conclusión
-
-Se ha realizado un análisis completo de regresión lineal múltiple sobre los datos de diabetes de Efron et al. (2004):
+Como punto final, se ha realizado un análisis completo de regresión lineal múltiple sobre los datos de diabetes de Efron et al. (2004):
 
 - **Estandarización y tratamiento del sexo:** El sexo debe tratarse como factor para un análisis correcto. Con predictores estandarizados, $\hat{\beta}_0 = \bar{y} \approx 152.13$ (confirmado numéricamente).
 
@@ -619,30 +623,15 @@ Se ha realizado un análisis completo de regresión lineal múltiple sobre los d
 
 ***
 
-**Referencias**  
-- Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression. *The Annals of Statistics*, 32(2), 407-499.  
-- Carmona, F. (2005). *Modelos lineales*. Publicaciones UB.  
-- Faraway, J. J. (2014). *Linear Models with R* (2nd ed.). Chapman & Hall/CRC.
-
-
-***
-
 \newpage
 
 REFERENCIA BIBLIOGRAFIA
 
 Materiales complementarios
 
-* Carmona, Francesc, Modelos lineales, Publicaciones UB, 2004.
-    Regresión lineal simple (6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8)
-    El apartado 6.7 Comparación de rectas se tratará de otra forma
-
-* ML [Pages 91 - 119].pdf Descargar ML [Pages 91 - 119].pdf
-    Regresión lineal múltiple (8.1, 8.2, 8.3, 8.4)
-
-* ML [Pages 133 - 160].pdf Descargar ML [Pages 133 - 160].pdf
- Faraway, Julian J., Linear Modelos with R, CRC Press, 2014.
-
+- Efron, B., Hastie, T., Johnstone, I., & Tibshirani, R. (2004). Least angle regression. *The Annals of Statistics*, 32(2), 407-499.  
+- Carmona, F. (2005). *Modelos lineales*. Publicaciones UB.  
+- Faraway, J. J. (2014). *Linear Models with R* (2nd ed.). Chapman & Hall/CRC.
 
 * Quick-R https://www.statmethods.net/stats/regression.htmlLinks to an external site. (Fitting the Model)
 
