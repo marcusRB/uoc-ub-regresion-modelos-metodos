@@ -87,14 +87,14 @@ knitr::opts_chunk$set(
 
 
 ```{r paquetes, include=FALSE}
-# Carga de los paquetes necesarios
+# Cargamos los paquetes necesarios
 paquetes <- c("lmtest", "car", "MASS", "ggplot2", "knitr", "kableExtra", "dplyr")
 for (p in paquetes) {
   if (!requireNamespace(p, quietly = TRUE)) install.packages(p, quiet = TRUE)
 }
-library(lmtest)   # Breusch-Pagan
-library(car)      # ncvTest, vif
-library(MASS)     # studres
+library(lmtest)
+library(car)
+library(MASS)
 library(ggplot2)
 library(knitr)
 library(kableExtra)
@@ -104,7 +104,7 @@ library(dplyr)
 
 ## Introducción
 
-En esta actividad se analiza un conjunto de datos de 442 pacientes que patecen diabets. La variable respuesta es la **progresión de la diabetes** un año después del inicio del estudio (`y`).
+En esta actividad se analiza un conjunto de datos de 442 pacientes que patecen diabetes. La variable respuesta es la **progresión de la diabetes** un año después del inicio del estudio (`y`).
 
 Los diez predictores basales son:
 
@@ -166,14 +166,14 @@ donde $\bar{x}_j$ es la media muestral y $s_j$ la desviación típica muestral. 
 La variable respuesta $y$ **no** se estandariza para conservar la interpretabilidad de los coeficientes en las unidades originales de progresión de la diabetes.
 
 ```{r carga-datos}
-# Carga de datos originales
+# Cargamos los datos originales
 url   <- "https://web.stanford.edu/~hastie/Papers/LARS/diabetes.data"
 datos <- read.table(url, header = TRUE)
 
-# Normalizar nombres a minúsculas
+# Normalizaremos nombres a minúsculas
 names(datos) <- tolower(names(datos))
 
-# Vista rápida de la estructura
+# Mostramos de manera rápida la estructura
 str(datos)
 ```
 
@@ -201,8 +201,6 @@ cat("D.T.   de y:", round(sd(datos_est$y), 4), "\n")
 cat("Rango  de y:", range(datos_est$y), "\n")
 ```
 
-A partir de ahora trabajaremos exclusivamente con **`datos_est`** (datos estandarizados, sexo como factor).
-
 \newpage
 
 ***
@@ -210,6 +208,8 @@ A partir de ahora trabajaremos exclusivamente con **`datos_est`** (datos estanda
 ## Ejercicio 1: Formulación, estimación y significación global (30 pt.)
 
 ### (1.1) Modelo con edad, bmi y bp
+
+A partir de ahora trabajaremos exclusivamente con **`datos_est`** (datos estandarizados, sexo como factor).
 
 Se propone el siguiente **modelo de regresión lineal múltiple** (modelo1):
 
@@ -281,13 +281,13 @@ Dado que los pacientes son individuos distintos en un estudio transversal, esta 
 
 **3. Homocedasticidad:**
 $$\text{Var}(\varepsilon_i) = \sigma^2 \quad \forall\, i$$
-La varianza de los errores debe ser constante e independiente de los valores de los predictores. Se comprobará formalmente con tests estadísticos en el Ejercicio 4.
+La varianza de los errores debe ser constante e independiente de los valores de los predictores.
 
 **4. Media cero de los errores:**
 $$E(\varepsilon_i) = 0 \quad \forall\, i$$
 Esta condición está garantizada por la inclusión del término independiente $\beta_0$ en el modelo, siempre que el modelo esté correctamente especificado.
 
-> Si alguna de estas condiciones no se cumple, los estimadores MCO pierden sus propiedades óptimas. En particular, la heterocedasticidad no introduce sesgo pero sí ineficiencia y hace que los errores estándar e intervalos de confianza sean incorrectos. La no linealidad o la falta de media cero implican sesgo en los estimadores. La inferencia (tests $t$ y $F$) requiere adicionalmente **normalidad** de los errores, que se verificará con el test de Shapiro-Wilk en el Ejercicio 4.
+> Si alguna de estas condiciones no se cumple, los estimadores MCO pierden sus propiedades óptimas. En particular, la heterocedasticidad no introduce sesgo pero sí ineficiencia y hace que los errores estándar e intervalos de confianza sean incorrectos. La no linealidad o la falta de media cero implican sesgo en los estimadores. La inferencia (tests $t$ y $F$) requiere adicionalmente **normalidad** de los errores, por ejemplo verificarlo con el test de Shapiro-Wilk.
 
 ***
 
@@ -403,7 +403,7 @@ Observamos los p‑valores individuales del `summary`:
 - `bmi`: p < 2e-16 el que es muy significativo.
 - `bp`: p = 1.56e-0 el que es muy significativo.
 
-Todos los predictores son estadísticamente significativos a excepción del `age`. Por tanto, **se puede prescindir de age** manteniendo el nivel de significación del 5%. Excluyendo `age` solo podría pensar que se trata de modelo simple y podríamos tener colinealidad parcial con bmi y bp.
+Todos los predictores son estadísticamente significativos a excepción del `age`. Por tanto, **se puede prescindir de age** manteniendo el nivel de significación del 5%. Al trabajar con un modelo simple, de momento podríamos excluir la característica `age`, ya que podríamos tener colinealidad parcial con bmi y bp.
 
 ### (2.2) Predictor más influyente
 
@@ -415,7 +415,7 @@ Los coeficientes (en unidades de desviación típica de la respuesta por desviac
 * bmi: 37.561  (t = 12.031, p < 2e-16)
 * bp:  18.768  (t = 5.763,  p = 1.56e-08)
 
-En magnitud, `bmi` tiene el coeficiente más grande y el mayor valor $t$ (17.35), seguido de `bp` (6.01) y `age` (2.60). Por tanto, **el IMC es el predictor más influyente** en el modelo1.
+En magnitud, `bmi` tiene el coeficiente más grande y el mayor valor $t$ (12.031), seguido de `bp` (5.763) y `age` (0.407). Por tanto, **el IMC es el predictor más influyente** en el modelo1.
 
 ### (2.3) Discusión sobre el valor añadido de las variables de suero
 
@@ -460,7 +460,7 @@ summary(modelo_ancova)
 
 El coeficiente de `sexHombre` indica la diferencia media entre hombres y mujeres. Si su p‑valor es < 0.05, hay diferencias significativas.
 
-El p‑valor de `sex` es < 2e-16 el que **no existen diferencias significativas** entre hombres y mujeres. El coeficiente es −8.000 por lo que los hombres muestran menos progresión, aunque no significativamente. Podríamos pensar que parte del aparente efecto del sexo estaba mediado por diferencias en IMC y triglicéridos entre sexos.
+El p‑valor de `sex` es < 0.1444 el que **no existen diferencias significativas** entre hombres y mujeres. El coeficiente es −8.000 por lo que los hombres muestran menos progresión, aunque no significativamente. Podríamos pensar que parte del aparente efecto del sexo estaba mediado por diferencias en IMC y triglicéridos entre sexos.
 
 ### (3.2) ¿El impacto del IMC es constante o varía con el sexo?
 
@@ -475,18 +475,16 @@ modelo_ancova_int <- lm(y ~ bmi * sex + s5, data = datos_est)
 summary(modelo_ancova_int)
 ```
 
-El coeficiente de bmi:sexHombre = +11.801 significa que la pendiente del IMC es mayor en hombres (27.36 + 11.80 = 39.16 vs. 27.36 en mujeres).
+El coeficiente de `bmi:sexHombre` = +11.801 significa que la pendiente del IMC es mayor en hombres (27.36 + 11.80 = 39.16 vs. 27.36 en mujeres).
 
 El p‑valor de la interacción es 0.0314 < 0.05, por lo que significa **que la interacción sí es significativa**. Por tanto, asumimos que la pendiente del IMC difiere entre sexos.
 
 
 ### (3.3) Ecuación predictora para mujeres
 
-Para el subgrupo de mujeres, `sexHombre = 0`. La ecuación del modelo con interacción (aunque no significativa, se incluye para ilustrar) se reduce a:
+A partir de `model_ancova_int`, para el subgrupo de mujeres sustituimos $\mathbf{1}[\text{Hombre}] = 0$, lo que elimina automáticamente los términos $\gamma$ y $\delta$:
 
-$$
-\hat{y}_{\text{mujer}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot \text{bmi} + \hat{\beta}_2 \cdot \text{s5}
-$$
+$$\hat{y}_{\text{Mujer}} = \hat{\beta}_0 + \hat{\beta}_1 \cdot \text{bmi}^* + \hat{\beta}_2 \cdot \text{s5}^*$$
 
 Con los coeficientes estimados:
 
@@ -494,10 +492,10 @@ $$
 \hat{y}_{\text{mujer}} = 155.43 + 27.36 \cdot \text{bmi} + 29.49 \cdot \text{s5}
 $$
 
-- **Intercepto** (108.12): valor predicho de la progresión cuando bmi y s5 son cero (valores medios, porque están estandarizados) para una mujer.
-- **Pendiente de bmi** (513.65): por cada incremento de una desviación típica en bmi, la progresión esperada aumenta en 513.65 unidades, manteniendo s5 constante.
-- **Pendiente de s5** (217.90): análogo para s5.
-- **Término de interacción** (58.23, no significativo): representa el cambio adicional en la pendiente del bmi para los hombres. Al no ser significativo, se puede omitir en la interpretación final.
+- **Intercepto** (155.43): valor predicho de la progresión cuando bmi y s5 son cero (valores medios, porque están estandarizados) para una mujer.
+- **Pendiente de bmi** (27.36): por cada incremento de una desviación típica en bmi, la progresión esperada aumenta en 513.65 unidades, manteniendo s5 constante.
+- **Pendiente de s5** (29.49): análogo para s5.
+- **Término de interacción** (11.80, significativo): la pendiente del IMC en hombres es $27.36 + 11.80 = 39.16$, significativamente mayor que en mujeres ($p = 0.031$) |
 
 ***
 
@@ -535,11 +533,6 @@ library(lmtest)
 bptest(modelo_ancova_int)        # Breusch-Pagan
 ncvTest(modelo_ancova_int)       # otra alternativa (car package)
 ```
-
-**Resultados típicos**:
-
-- Breusch-Pagan: p ≈ 0.023 → indica heterocedasticidad significativa al 5%.
-- ncvTest: p ≈ 0.018 → confirma la heterocedasticidad.
 
 **Normalidad**:
 
